@@ -7,11 +7,12 @@
         </span>
         <span class="brand-text">
             <span class="brand-name">SondeX</span>
-            <span class="brand-tagline">ANFR - Surveillance RF DVB-T</span>
+            <span class="brand-tagline">Surveillance RF DVB-T</span>
         </span>
     </a>
     <nav class="site-nav">
         <a class="nav-link {% if request.endpoint == 'home' %}active{% endif %}" href="{{ url_for('home') }}">Accueil</a>
+        <a class="nav-link {% if request.endpoint == 'quick_check' %}active{% endif %}" href="{{ url_for('quick_check') }}">Quick Check</a>
         <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">Dashboard</a>
     </nav>
 </header>

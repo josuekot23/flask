@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="60">
+<title>Quick Check — SondeX</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+{% include "_header.html" %}
+
+<div class="page-content">
+
+<div class="home-header">
+    <p class="eyebrow">Réseau DVB-T · Surveillance</p>
+    <h2>Quick Check — Signal des 24 dernières heures</h2>
+    <p class="home-intro">
+        Vue rapide du niveau de signal par fréquence et par site, heure par heure.
+        Dégradé relatif à la période affichée : rouge = signal le plus faible
+        observé, vert = signal le plus fort observé. Survole un rectangle pour
+        voir l'heure et la valeur exacte.
+    </p>
+    <p class="home-meta">Actualisé le {{ generated_at }} · rafraîchissement auto 60s</p>
+</div>
+
+{% if error %}
+<div class="site-error quick-error">{{ error }}</div>
+{% elif grids|length == 0 %}
+<div class="empty-state">Aucune donnée de signal sur les 24 dernières heures.</div>
+{% endif %}
+
+{% for g in grids %}
+<div class="quick-panel">
+    <h3 class="quick-panel-title">{{ g.site }}</h3>
+    {% for f in g.frequencies %}
+    <div class="quick-row">
+        <div class="quick-row-label">
+            <span class="quick-freq-label">{{ f.label }}</span>
+            <span class="quick-freq-channels">{{ f.channels }}</span>
+        </div>
+        <div class="quick-cells">
+            {% for c in f.cells %}
+            <span class="quick-cell"
+                  style="background:{{ c.color }}"
+                  title="{{ c.hour }} — {{ (c.value ~ ' dBm') if c.value is not none else 'pas de donnée' }}"></span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endfor %}
+
+</div>
+
+{% include "_footer.html" %}
+
+</body>
+</html>

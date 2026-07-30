@@ -181,6 +181,33 @@ def dashboard():
     )
 
 
+@app.route("/quick-check")
+def quick_check():
+    end_dt = datetime.utcnow()
+    start_dt = end_dt - timedelta(hours=24)
+    start_rfc3339 = start_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    end_rfc3339 = end_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    error = None
+    grids = []
+    try:
+        df = rf.fetch_data(
+            start_rfc3339, end_rfc3339, database=None, group_interval="1h", measurement="signal"
+        )
+        grids = rf.build_quick_check_grids(df, hours=24)
+    except Exception as e:
+        error = f"Erreur InfluxDB: {e}"
+
+    generated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    return render_template(
+        "quick_check.html",
+        grids=grids,
+        error=error,
+        generated_at=generated_at,
+    )
+
+
 @app.route("/api/signal")
 def api_signal():
     start = request.args.get("start")

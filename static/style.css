@@ -339,18 +339,48 @@ ul.freq-list {
     padding: 14px 18px 18px;
     margin-bottom: 24px;
 }
+.map-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+}
 .map-panel-title {
-    margin: 0 0 12px;
+    margin: 0;
     font-size: 14px;
     color: #9aa1b1;
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
+.map-legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.map-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #9aa1b1;
+}
+.map-legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.dot-online { background: #34c759; }
+.dot-offline-recent { background: #ff9f0a; }
+.dot-offline-long { background: #ff4d4f; }
 #site-map {
     height: 420px;
     border-radius: 8px;
     overflow: hidden;
     background: #1b1e26;
+    border: 1px solid #2a2e3a;
 }
 
 /* Titres de section (En ligne / Hors ligne < 5 j / Hors ligne > 5 j) */
@@ -513,4 +543,64 @@ ul.freq-list {
 }
 .consult-btn:hover {
     opacity: 0.9;
+}
+
+/* ============================================================
+   Quick Check : grille fréquence x heure, petits rectangles colorés
+   ============================================================ */
+.quick-error {
+    max-width: 640px;
+    margin-bottom: 16px;
+}
+.quick-panel {
+    background: #1b1e26;
+    border: 1px solid #2a2e3a;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+}
+.quick-panel-title {
+    margin: 0 0 12px;
+    font-size: 15px;
+    font-weight: 700;
+    text-transform: capitalize;
+}
+.quick-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 5px 0;
+    border-bottom: 1px solid #20232c;
+}
+.quick-row:last-child {
+    border-bottom: none;
+}
+.quick-row-label {
+    display: flex;
+    flex-direction: column;
+    min-width: 150px;
+    max-width: 220px;
+    flex-shrink: 0;
+}
+.quick-freq-label {
+    font-size: 13px;
+    font-weight: 600;
+}
+.quick-freq-channels {
+    font-size: 11px;
+    color: #6b7185;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.quick-cells {
+    display: flex;
+    gap: 2px;
+    flex-wrap: wrap;
+}
+.quick-cell {
+    width: 14px;
+    height: 20px;
+    border-radius: 2px;
+    flex-shrink: 0;
 }
