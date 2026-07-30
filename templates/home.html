@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="60">
+<title>Dashboard RF — Vue d'ensemble</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="home-header">
+    <div>
+        <h2>Dashboard RF — Vue d'ensemble des sites</h2>
+        <p class="home-subtitle">
+            <span class="pill {% if online_count == total_count and total_count > 0 %}pill-online{% else %}pill-mixed{% endif %}">
+                {{ online_count }} / {{ total_count }} sites actifs
+            </span>
+            <span class="home-meta">Actualisé le {{ generated_at }} · rafraîchissement auto 60s</span>
+        </p>
+    </div>
+</div>
+
+{% if statuses|length == 0 %}
+<div class="empty-state">
+    Aucune base de données InfluxDB trouvée. Vérifie la connexion au serveur InfluxDB.
+</div>
+{% endif %}
+
+<div class="site-grid">
+    {% for s in statuses %}
+    <div class="site-card {% if s.online %}card-online{% else %}card-offline{% endif %}">
+        <div class="site-card-header">
+            <span class="site-name">{{ s.site }}</span>
+            <span class="status-pill {% if s.online %}status-online{% else %}status-offline{% endif %}">
+                {% if s.online %}● Actif{% else %}● Inactif{% endif %}
+            </span>
+        </div>
+
+        {% if s.error and not s.last_seen %}
+        <div class="site-error">{{ s.error }}</div>
+        {% else %}
+        <div class="site-stats">
+            <div class="stat-row">
+                <span class="stat-label">Dernière donnée</span>
+                <span class="stat-value">{{ s.time_ago }}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Horodatage</span>
+                <span class="stat-value stat-mono">{{ s.last_seen_fmt }}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Fréquences actives (10 min)</span>
+                <span class="stat-value">{{ s.active_frequencies if s.active_frequencies is not none else "—" }}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Points reçus (1h)</span>
+                <span class="stat-value">{{ s.points_last_hour if s.points_last_hour is not none else "—" }}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Température sonde</span>
+                <span class="stat-value">{{ s.last_temperature ~ " °C" if s.last_temperature is not none else "—" }}</span>
+            </div>
+        </div>
+
+        <div class="measurement-badges">
+            {% for m in all_measurements %}
+            <span class="badge {% if m in s.measurements %}badge-active{% else %}badge-inactive{% endif %}">
+                {{ measurement_labels.get(m, m) if m != "temperature" else "Température" }}
+            </span>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <a class="consult-btn" href="{{ url_for('dashboard', site=s.site) }}">Consulter →</a>
+    </div>
+    {% endfor %}
+</div>
+
+</body>
+</html>

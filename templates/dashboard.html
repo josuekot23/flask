@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Dashboard Signaux RF</title>
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<h2>Dashboard Signaux RF</h2>
+<p><a class="back-link" href="{{ url_for('home') }}">← Retour à la vue d'ensemble</a></p>
+
+<div class="controls">
+    <label>Début
+        <input type="datetime-local" id="start-date">
+    </label>
+    <label>Fin
+        <input type="datetime-local" id="end-date">
+    </label>
+    <label>Mesure
+        <select id="measurement-select">
+            {% for m in measurements %}
+            <option value="{{ m }}" {% if m == default_measurement %}selected{% endif %}>{{ measurement_labels[m] }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>Site
+        <select id="site-select">
+            <option value="">Tous les sites</option>
+            {% for site in sites %}
+            <option value="{{ site }}">{{ site }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <button id="apply-btn">Appliquer</button>
+    <button id="reset-btn" class="secondary">Dernières 24h</button>
+    <span id="status" class="status"></span>
+</div>
+
+<div id="rf-plot"></div>
+
+<div class="freq-panel">
+    <h3>Fréquences (<span id="freq-count">0</span>)</h3>
+    <ul class="freq-list" id="freq-list"></ul>
+</div>
+
+<hr class="divider">
+
+<h2>Température des sondes</h2>
+
+<div class="controls">
+    <label>Début
+        <input type="datetime-local" id="temp-start-date">
+    </label>
+    <label>Fin
+        <input type="datetime-local" id="temp-end-date">
+    </label>
+    <label>Site
+        <select id="temp-site-select">
+            <option value="">Tous les sites</option>
+            {% for site in sites %}
+            <option value="{{ site }}">{{ site }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <button id="temp-apply-btn">Appliquer</button>
+    <button id="temp-reset-btn" class="secondary">Dernières 24h</button>
+    <span id="temp-status" class="status"></span>
+</div>
+
+<div id="temp-plot"></div>
+
+<script>
+    const PRESELECTED_SITE = {{ preselected_site|tojson }};
+</script>
+<script src="{{ url_for('static', filename='main.js') }}"></script>
+</body>
+</html>

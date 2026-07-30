@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="60">
+<title>Dashboard RF — Vue d'ensemble</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="home-header">
+    <div>
+        <h2>Dashboard RF — Vue d'ensemble des sites</h2>
+        <p class="home-subtitle">
+            <span class="pill pill-mixed">
+                1 / 2 sites actifs
+            </span>
+            <span class="home-meta">Actualisé le 2026-07-23 12:23:58 UTC · rafraîchissement auto 60s</span>
+        </p>
+    </div>
+</div>
+
+
+
+<div class="site-grid">
+    
+    <div class="site-card card-online">
+        <div class="site-card-header">
+            <span class="site-name">brest</span>
+            <span class="status-pill status-online">
+                ● Actif
+            </span>
+        </div>
+
+        
+        <div class="site-stats">
+            <div class="stat-row">
+                <span class="stat-label">Dernière donnée</span>
+                <span class="stat-value">il y a 2 min</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Horodatage</span>
+                <span class="stat-value stat-mono">2026-07-23 12:21 UTC</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Fréquences actives (10 min)</span>
+                <span class="stat-value">2</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Points reçus (1h)</span>
+                <span class="stat-value">3421</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Température sonde</span>
+                <span class="stat-value">21.3 °C</span>
+            </div>
+        </div>
+
+        <div class="measurement-badges">
+            
+            <span class="badge badge-active">
+                Signal (dBm)
+            </span>
+            
+            <span class="badge badge-active">
+                C/N (dB)
+            </span>
+            
+            <span class="badge badge-inactive">
+                Extrapolation
+            </span>
+            
+            <span class="badge badge-inactive">
+                Post-BER
+            </span>
+            
+            <span class="badge badge-inactive">
+                Pre-BER
+            </span>
+            
+            <span class="badge badge-active">
+                Température
+            </span>
+            
+        </div>
+        
+
+        <a class="consult-btn" href="/dashboard?site=brest">Consulter →</a>
+    </div>
+    
+    <div class="site-card card-offline">
+        <div class="site-card-header">
+            <span class="site-name">boulogne</span>
+            <span class="status-pill status-offline">
+                ● Inactif
+            </span>
+        </div>
+
+        
+        <div class="site-stats">
+            <div class="stat-row">
+                <span class="stat-label">Dernière donnée</span>
+                <span class="stat-value">il y a 40 min</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Horodatage</span>
+                <span class="stat-value stat-mono">2026-07-23 11:43 UTC</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Fréquences actives (10 min)</span>
+                <span class="stat-value">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Points reçus (1h)</span>
+                <span class="stat-value">12</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Température sonde</span>
+                <span class="stat-value">21.3 °C</span>
+            </div>
+        </div>
+
+        <div class="measurement-badges">
+            
+            <span class="badge badge-active">
+                Signal (dBm)
+            </span>
+            
+            <span class="badge badge-active">
+                C/N (dB)
+            </span>
+            
+            <span class="badge badge-inactive">
+                Extrapolation
+            </span>
+            
+            <span class="badge badge-inactive">
+                Post-BER
+            </span>
+            
+            <span class="badge badge-inactive">
+                Pre-BER
+            </span>
+            
+            <span class="badge badge-active">
+                Température
+            </span>
+            
+        </div>
+        
+
+        <a class="consult-btn" href="/dashboard?site=boulogne">Consulter →</a>
+    </div>
+    
+</div>
+
+</body>
+</html>

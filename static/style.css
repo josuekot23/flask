@@ -1,0 +1,297 @@
+body {
+    background: #111318;
+    color: #e8e8e8;
+    font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    margin: 0;
+    padding: 20px 24px 40px;
+}
+h2 {
+    margin: 0 0 12px;
+    font-weight: 600;
+}
+.back-link {
+    color: #9aa1b1;
+    font-size: 13px;
+    text-decoration: none;
+}
+.back-link:hover {
+    color: #e8e8e8;
+}
+.controls {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    flex-wrap: wrap;
+    background: #1b1e26;
+    border: 1px solid #2a2e3a;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+}
+.controls label {
+    display: flex;
+    flex-direction: column;
+    font-size: 12px;
+    color: #9aa1b1;
+    gap: 4px;
+}
+.controls input[type="datetime-local"],
+.controls select {
+    background: #0f1116;
+    border: 1px solid #333748;
+    color: #e8e8e8;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 13px;
+}
+.controls button {
+    background: #3d6bff;
+    border: none;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+}
+.controls button.secondary {
+    background: #2a2e3a;
+    color: #cfd3dc;
+}
+.controls button:hover {
+    opacity: 0.9;
+}
+.status {
+    font-size: 12px;
+    color: #9aa1b1;
+    margin-left: 8px;
+}
+#rf-plot {
+    background: #111318;
+    min-height: 700px;
+}
+.divider {
+    border: none;
+    border-top: 1px solid #2a2e3a;
+    margin: 32px 0 20px;
+}
+#temp-plot {
+    background: #111318;
+    min-height: 400px;
+}
+.freq-panel {
+    margin-top: 18px;
+    background: #1b1e26;
+    border: 1px solid #2a2e3a;
+    border-radius: 8px;
+    padding: 14px 18px;
+}
+.freq-panel h3 {
+    margin: 0 0 10px;
+    font-size: 14px;
+    color: #9aa1b1;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+ul.freq-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 8px 20px;
+}
+.freq-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    padding: 6px 8px;
+    border-bottom: 1px solid #23262f;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+.freq-item:hover {
+    background: #23262f;
+}
+.freq-item.active {
+    background: #262b3d;
+    box-shadow: inset 3px 0 0 #3d6bff;
+}
+.swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+.freq-label {
+    font-weight: 600;
+    min-width: 70px;
+}
+.freq-channels {
+    color: #b8bdc9;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.freq-count {
+    color: #6b7185;
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+/* ============================================================
+   Page d'accueil : cartes de sites, statut, stats
+   ============================================================ */
+.home-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+.home-subtitle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 6px 0 0;
+    flex-wrap: wrap;
+}
+.home-meta {
+    font-size: 12px;
+    color: #6b7185;
+}
+.pill {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.pill-online {
+    background: rgba(52, 199, 89, 0.15);
+    color: #34c759;
+}
+.pill-mixed {
+    background: rgba(255, 159, 10, 0.15);
+    color: #ff9f0a;
+}
+.empty-state {
+    background: #1b1e26;
+    border: 1px solid #2a2e3a;
+    border-radius: 8px;
+    padding: 24px;
+    text-align: center;
+    color: #9aa1b1;
+}
+.site-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
+.site-card {
+    background: #1b1e26;
+    border: 1px solid #2a2e3a;
+    border-left: 3px solid #3a3f4d;
+    border-radius: 10px;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.site-card.card-online {
+    border-left-color: #34c759;
+}
+.site-card.card-offline {
+    border-left-color: #ff4d4f;
+}
+.site-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.site-name {
+    font-size: 16px;
+    font-weight: 700;
+    text-transform: capitalize;
+}
+.status-pill {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    letter-spacing: 0.02em;
+}
+.status-online {
+    background: rgba(52, 199, 89, 0.15);
+    color: #34c759;
+}
+.status-offline {
+    background: rgba(255, 77, 79, 0.15);
+    color: #ff4d4f;
+}
+.site-error {
+    font-size: 12px;
+    color: #ff9f0a;
+    background: rgba(255, 159, 10, 0.08);
+    border-radius: 6px;
+    padding: 8px 10px;
+}
+.site-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+}
+.stat-label {
+    color: #9aa1b1;
+}
+.stat-value {
+    font-weight: 600;
+    color: #e8e8e8;
+}
+.stat-mono {
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 12px;
+    font-weight: 400;
+    color: #b8bdc9;
+}
+.measurement-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    border: 1px solid #2a2e3a;
+}
+.badge-active {
+    color: #cfd3dc;
+    background: #23262f;
+}
+.badge-inactive {
+    color: #4a4f5c;
+    background: transparent;
+    border-style: dashed;
+}
+.consult-btn {
+    align-self: flex-start;
+    margin-top: 4px;
+    background: #3d6bff;
+    color: white;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 14px;
+    border-radius: 6px;
+}
+.consult-btn:hover {
+    opacity: 0.9;
+}
