@@ -12,12 +12,17 @@ Lancement:
 
 from datetime import datetime, timedelta
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, url_for
 import plotly.express as px
 
 import rf_data as rf
 
 app = Flask(__name__)
+
+
+@app.context_processor
+def inject_globals():
+    return {"current_year": datetime.utcnow().year}
 
 
 def build_traces(df, measurement_label):
@@ -113,17 +118,49 @@ def home():
         else:
             s["last_seen_fmt"] = "—"
 
-    # en ligne d'abord, puis alphabétique
-    statuses.sort(key=lambda s: (not s["online"], s["site"]))
+    # Regroupement par catégorie: en ligne / hors ligne récent (< 5 j) / hors ligne longue durée
+    # À l'intérieur de chaque catégorie, tri par récence (site le plus récemment vu en premier).
+    # Un site sans donnée (minutes_since_last=None) est relégué en fin de sa catégorie.
+    category_order = {"online": 0, "offline_recent": 1, "offline_long": 2}
+    statuses.sort(
+        key=lambda s: (
+            category_order.get(s["category"], 99),
+            s["minutes_since_last"] if s["minutes_since_last"] is not None else float("inf"),
+            s["site"],
+        )
+    )
 
-    online_count = sum(1 for s in statuses if s["online"])
+    online_sites = [s for s in statuses if s["category"] == "online"]
+    offline_recent_sites = [s for s in statuses if s["category"] == "offline_recent"]
+    offline_long_sites = [s for s in statuses if s["category"] == "offline_long"]
+
+    # Sites géolocalisés pour la carte (ceux sans coordonnées connues sont
+    # simplement absents de la carte, sans erreur)
+    locations = rf.load_site_locations()
+    map_sites = []
+    for s in statuses:
+        loc = locations.get(s["site"])
+        if loc:
+            map_sites.append(
+                {
+                    "site": s["site"],
+                    "lat": loc["lat"],
+                    "lon": loc["lon"],
+                    "category": s["category"],
+                    "url": url_for("dashboard", site=s["site"]),
+                }
+            )
+
     generated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
 
     return render_template(
         "home.html",
-        statuses=statuses,
-        online_count=online_count,
+        online_sites=online_sites,
+        offline_recent_sites=offline_recent_sites,
+        offline_long_sites=offline_long_sites,
+        online_count=len(online_sites),
         total_count=len(statuses),
+        map_sites=map_sites,
         all_measurements=rf.ALL_MEASUREMENTS,
         measurement_labels=rf.MEASUREMENT_LABELS,
         generated_at=generated_at,
@@ -153,6 +190,9 @@ def api_signal():
 
     if measurement not in rf.AVAILABLE_MEASUREMENTS:
         return jsonify({"error": f"Mesure invalide: {measurement}"}), 400
+
+    if site and site not in rf.list_databases():
+        return jsonify({"error": f"Site inconnu: {site}"}), 400
 
     if not start or not end:
         return jsonify({"error": "Paramètres 'start' et 'end' requis (ISO 8601)."}), 400
@@ -199,6 +239,9 @@ def api_temperature():
     start = request.args.get("start")
     end = request.args.get("end")
     site = request.args.get("site") or None
+
+    if site and site not in rf.list_databases():
+        return jsonify({"error": f"Site inconnu: {site}"}), 400
 
     if not start or not end:
         return jsonify({"error": "Paramètres 'start' et 'end' requis (ISO 8601)."}), 400

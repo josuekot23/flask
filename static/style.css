@@ -3,7 +3,109 @@ body {
     color: #e8e8e8;
     font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+.page-content {
+    flex: 1;
     padding: 20px 24px 40px;
+}
+
+/* ============================================================
+   Header
+   ============================================================ */
+.site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    background: #1b1e26;
+    border-bottom: 1px solid #2a2e3a;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: inherit;
+}
+.brand-mark {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    width: 28px;
+    height: 22px;
+    padding: 4px;
+    background: #23262f;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+.brand-bar {
+    width: 4px;
+    border-radius: 1px;
+    background: #3d6bff;
+}
+.brand-bar:nth-child(1) { height: 6px; }
+.brand-bar:nth-child(2) { height: 10px; }
+.brand-bar:nth-child(3) { height: 14px; }
+.brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+.brand-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #e8e8e8;
+}
+.brand-tagline {
+    font-size: 11px;
+    color: #6b7185;
+}
+.site-nav {
+    display: flex;
+    gap: 4px;
+}
+.nav-link {
+    font-size: 13px;
+    font-weight: 600;
+    color: #9aa1b1;
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.nav-link:hover {
+    background: #23262f;
+    color: #e8e8e8;
+}
+.nav-link.active {
+    background: rgba(61, 107, 255, 0.15);
+    color: #6f92ff;
+}
+
+/* ============================================================
+   Footer
+   ============================================================ */
+.site-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #2a2e3a;
+    color: #6b7185;
+    font-size: 12px;
+    text-align: center;
+}
+.footer-brand {
+    color: #9aa1b1;
+    font-weight: 600;
+}
+.footer-sep {
+    margin: 0 6px;
+    color: #3a3f4d;
 }
 h2 {
     margin: 0 0 12px;
@@ -143,13 +245,23 @@ ul.freq-list {
 }
 
 /* ============================================================
-   Page d'accueil : cartes de sites, statut, stats
+   Page d'accueil : masthead, bandeau d'instruments, cartes de sites
    ============================================================ */
 .home-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
+}
+.eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b7185;
+    margin: 0 0 6px;
+}
+.home-intro {
+    color: #9aa1b1;
+    font-size: 13.5px;
+    margin: 0 0 10px;
+    max-width: 62ch;
 }
 .home-subtitle {
     display: flex;
@@ -177,6 +289,39 @@ ul.freq-list {
     background: rgba(255, 159, 10, 0.15);
     color: #ff9f0a;
 }
+
+/* Bandeau d'instruments : compteurs par catégorie avant la grille */
+.instrument-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: #2a2e3a;
+    border: 1px solid #2a2e3a;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+.instrument {
+    background: #1b1e26;
+    padding: 12px 16px;
+}
+.instrument-label {
+    display: block;
+    font-size: 12px;
+    color: #9aa1b1;
+    margin-bottom: 4px;
+}
+.instrument-value {
+    display: block;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 22px;
+    font-weight: 600;
+}
+.instrument-total .instrument-value { color: #e8e8e8; }
+.instrument-online .instrument-value { color: #34c759; }
+.instrument-offline-recent .instrument-value { color: #ff9f0a; }
+.instrument-offline-long .instrument-value { color: #ff4d4f; }
+
 .empty-state {
     background: #1b1e26;
     border: 1px solid #2a2e3a;
@@ -185,6 +330,52 @@ ul.freq-list {
     text-align: center;
     color: #9aa1b1;
 }
+
+/* Carte des sites (Leaflet) */
+.map-panel {
+    background: #1b1e26;
+    border: 1px solid #2a2e3a;
+    border-radius: 8px;
+    padding: 14px 18px 18px;
+    margin-bottom: 24px;
+}
+.map-panel-title {
+    margin: 0 0 12px;
+    font-size: 14px;
+    color: #9aa1b1;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+#site-map {
+    height: 420px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #1b1e26;
+}
+
+/* Titres de section (En ligne / Hors ligne < 5 j / Hors ligne > 5 j) */
+.section-title {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: #9aa1b1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 32px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #2a2e3a;
+}
+.section-title::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+}
+.section-title-online::before { background: #34c759; }
+.section-title-offline-recent::before { background: #ff9f0a; }
+.section-title-offline-long::before { background: #ff4d4f; }
+
 .site-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -202,6 +393,9 @@ ul.freq-list {
 }
 .site-card.card-online {
     border-left-color: #34c759;
+}
+.site-card.card-offline-recent {
+    border-left-color: #ff9f0a;
 }
 .site-card.card-offline {
     border-left-color: #ff4d4f;
@@ -227,10 +421,35 @@ ul.freq-list {
     background: rgba(52, 199, 89, 0.15);
     color: #34c759;
 }
+.status-offline-recent {
+    background: rgba(255, 159, 10, 0.15);
+    color: #ff9f0a;
+}
 .status-offline {
     background: rgba(255, 77, 79, 0.15);
     color: #ff4d4f;
 }
+
+/* Barres de signal : indicateur de statut alternatif aux points colorés */
+.signal-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 14px;
+}
+.signal-bar {
+    width: 4px;
+    border-radius: 1px;
+    background: #3a3f4d;
+}
+.signal-bar:nth-child(1) { height: 5px; }
+.signal-bar:nth-child(2) { height: 8px; }
+.signal-bar:nth-child(3) { height: 11px; }
+.signal-bar:nth-child(4) { height: 14px; }
+.signal-bars-online .signal-bar.lit { background: #34c759; }
+.signal-bars-offline-recent .signal-bar.lit { background: #ff9f0a; }
+.signal-bars-offline-long .signal-bar.lit { background: #ff4d4f; }
+
 .site-error {
     font-size: 12px;
     color: #ff9f0a;

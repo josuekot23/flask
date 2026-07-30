@@ -4,77 +4,209 @@
 <meta charset="utf-8">
 <meta http-equiv="refresh" content="60">
 <title>Dashboard RF — Vue d'ensemble</title>
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
+{% include "_header.html" %}
+
+<div class="page-content">
+
 <div class="home-header">
-    <div>
-        <h2>Dashboard RF — Vue d'ensemble des sites</h2>
-        <p class="home-subtitle">
-            <span class="pill {% if online_count == total_count and total_count > 0 %}pill-online{% else %}pill-mixed{% endif %}">
-                {{ online_count }} / {{ total_count }} sites actifs
-            </span>
-            <span class="home-meta">Actualisé le {{ generated_at }} · rafraîchissement auto 60s</span>
-        </p>
+    <p class="eyebrow">Réseau DVB-T · Surveillance</p>
+    <h2>Vue d'ensemble des sites</h2>
+    <p class="home-intro">
+        État des sondes de terrain en temps réel — signal, C/N, débit d'erreurs
+        et température par site.
+    </p>
+    <p class="home-meta">Actualisé le {{ generated_at }} · rafraîchissement auto 60s</p>
+</div>
+
+<div class="instrument-strip">
+    <div class="instrument instrument-total">
+        <span class="instrument-label">Sites suivis</span>
+        <span class="instrument-value">{{ total_count }}</span>
+    </div>
+    <div class="instrument instrument-online">
+        <span class="instrument-label">En ligne</span>
+        <span class="instrument-value">{{ online_sites|length }}</span>
+    </div>
+    <div class="instrument instrument-offline-recent">
+        <span class="instrument-label">Hors ligne &lt; 5 j</span>
+        <span class="instrument-value">{{ offline_recent_sites|length }}</span>
+    </div>
+    <div class="instrument instrument-offline-long">
+        <span class="instrument-label">Hors ligne &gt; 5 j</span>
+        <span class="instrument-value">{{ offline_long_sites|length }}</span>
     </div>
 </div>
 
-{% if statuses|length == 0 %}
+{% if total_count == 0 %}
 <div class="empty-state">
     Aucune base de données InfluxDB trouvée. Vérifie la connexion au serveur InfluxDB.
 </div>
 {% endif %}
 
-<div class="site-grid">
-    {% for s in statuses %}
-    <div class="site-card {% if s.online %}card-online{% else %}card-offline{% endif %}">
-        <div class="site-card-header">
-            <span class="site-name">{{ s.site }}</span>
-            <span class="status-pill {% if s.online %}status-online{% else %}status-offline{% endif %}">
-                {% if s.online %}● Actif{% else %}● Inactif{% endif %}
-            </span>
-        </div>
+<div class="map-panel">
+    <h3 class="map-panel-title">Carte des sites</h3>
+    <div id="site-map"></div>
+</div>
 
-        {% if s.error and not s.last_seen %}
-        <div class="site-error">{{ s.error }}</div>
-        {% else %}
-        <div class="site-stats">
-            <div class="stat-row">
-                <span class="stat-label">Dernière donnée</span>
-                <span class="stat-value">{{ s.time_ago }}</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Horodatage</span>
-                <span class="stat-value stat-mono">{{ s.last_seen_fmt }}</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Fréquences actives (10 min)</span>
-                <span class="stat-value">{{ s.active_frequencies if s.active_frequencies is not none else "—" }}</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Points reçus (1h)</span>
-                <span class="stat-value">{{ s.points_last_hour if s.points_last_hour is not none else "—" }}</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Température sonde</span>
-                <span class="stat-value">{{ s.last_temperature ~ " °C" if s.last_temperature is not none else "—" }}</span>
-            </div>
-        </div>
+{% macro signal_bars(category) %}
+    {% if category == 'online' %}
+        {% set lit = 4 %}
+        {% set css_category = 'online' %}
+    {% elif category == 'offline_recent' %}
+        {% set lit = 2 %}
+        {% set css_category = 'offline-recent' %}
+    {% else %}
+        {% set lit = 1 %}
+        {% set css_category = 'offline-long' %}
+    {% endif %}
+    <span class="signal-bars signal-bars-{{ css_category }}">
+        {% for i in range(1, 5) %}
+        <span class="signal-bar{% if i <= lit %} lit{% endif %}"></span>
+        {% endfor %}
+    </span>
+{% endmacro %}
 
-        <div class="measurement-badges">
-            {% for m in all_measurements %}
-            <span class="badge {% if m in s.measurements %}badge-active{% else %}badge-inactive{% endif %}">
-                {{ measurement_labels.get(m, m) if m != "temperature" else "Température" }}
-            </span>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        <a class="consult-btn" href="{{ url_for('dashboard', site=s.site) }}">Consulter →</a>
+{% macro site_card(s) %}
+<div class="site-card {% if s.category == 'online' %}card-online{% elif s.category == 'offline_recent' %}card-offline-recent{% else %}card-offline{% endif %}">
+    <div class="site-card-header">
+        <span class="site-name">{{ s.site }}</span>
+        {{ signal_bars(s.category) }}
     </div>
+
+    {% if s.error and not s.last_seen %}
+    <div class="site-error">{{ s.error }}</div>
+    {% else %}
+    <div class="site-stats">
+        <div class="stat-row">
+            <span class="stat-label">Dernière donnée</span>
+            <span class="stat-value">{{ s.time_ago }}</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Horodatage</span>
+            <span class="stat-value stat-mono">{{ s.last_seen_fmt }}</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Fréquences actives (10 min)</span>
+            <span class="stat-value">{{ s.active_frequencies if s.active_frequencies is not none else "—" }}</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Points reçus (1h)</span>
+            <span class="stat-value">{{ s.points_last_hour if s.points_last_hour is not none else "—" }}</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Température sonde</span>
+            <span class="stat-value">{{ s.last_temperature ~ " °C" if s.last_temperature is not none else "—" }}</span>
+        </div>
+    </div>
+
+    <div class="measurement-badges">
+        {% for m in all_measurements %}
+        <span class="badge {% if m in s.measurements %}badge-active{% else %}badge-inactive{% endif %}">
+            {{ measurement_labels.get(m, m) if m != "temperature" else "Température" }}
+        </span>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <a class="consult-btn" href="{{ url_for('dashboard', site=s.site) }}">Consulter →</a>
+</div>
+{% endmacro %}
+
+{% if online_sites|length > 0 %}
+<h3 class="section-title section-title-online">En ligne ({{ online_sites|length }})</h3>
+<div class="site-grid">
+    {% for s in online_sites %}
+        {{ site_card(s) }}
     {% endfor %}
 </div>
+{% endif %}
+
+{% if offline_recent_sites|length > 0 %}
+<h3 class="section-title section-title-offline-recent">Hors ligne — moins de 5 jours ({{ offline_recent_sites|length }})</h3>
+<div class="site-grid">
+    {% for s in offline_recent_sites %}
+        {{ site_card(s) }}
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if offline_long_sites|length > 0 %}
+<h3 class="section-title section-title-offline-long">Hors ligne — plus de 5 jours ({{ offline_long_sites|length }})</h3>
+<div class="site-grid">
+    {% for s in offline_long_sites %}
+        {{ site_card(s) }}
+    {% endfor %}
+</div>
+{% endif %}
+
+</div>
+
+{% include "_footer.html" %}
+
+<script>
+    const MAP_SITES = {{ map_sites|tojson }};
+    const CATEGORY_COLORS = {
+        online: "#34c759",
+        offline_recent: "#ff9f0a",
+        offline_long: "#ff4d4f",
+    };
+    const CATEGORY_LABELS = {
+        online: "En ligne",
+        offline_recent: "Hors ligne < 5 j",
+        offline_long: "Hors ligne > 5 j",
+    };
+
+    const mapTraces = Object.keys(CATEGORY_LABELS)
+        .map((cat) => {
+            const pts = MAP_SITES.filter((s) => s.category === cat);
+            if (pts.length === 0) return null;
+            return {
+                type: "scattermapbox",
+                mode: "markers",
+                lat: pts.map((p) => p.lat),
+                lon: pts.map((p) => p.lon),
+                text: pts.map((p) => p.site),
+                customdata: pts.map((p) => p.url),
+                marker: { size: 13, color: CATEGORY_COLORS[cat] },
+                name: CATEGORY_LABELS[cat],
+                hovertemplate: "<b>%{text}</b><extra></extra>",
+            };
+        })
+        .filter(Boolean);
+
+    const mapLayout = {
+        mapbox: {
+            style: "carto-darkmatter",
+            center: { lat: 46.6, lon: 2.3 },
+            zoom: 4.6,
+        },
+        margin: { t: 0, b: 0, l: 0, r: 0 },
+        showlegend: true,
+        legend: {
+            orientation: "h",
+            x: 0,
+            y: 1,
+            font: { color: "#e8e8e8", size: 12 },
+            bgcolor: "rgba(0,0,0,0)",
+        },
+        paper_bgcolor: "#1b1e26",
+    };
+
+    Plotly.newPlot("site-map", mapTraces, mapLayout, {
+        displayModeBar: false,
+        scrollZoom: false,
+    }).then(() => {
+        document.getElementById("site-map").on("plotly_click", (data) => {
+            const url = data.points[0].customdata;
+            if (url) window.location.href = url;
+        });
+    });
+</script>
 
 </body>
 </html>

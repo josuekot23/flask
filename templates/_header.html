@@ -1,0 +1,17 @@
+<header class="site-header">
+    <a class="brand" href="{{ url_for('home') }}">
+        <span class="brand-mark">
+            <span class="brand-bar"></span>
+            <span class="brand-bar"></span>
+            <span class="brand-bar"></span>
+        </span>
+        <span class="brand-text">
+            <span class="brand-name">SondeX</span>
+            <span class="brand-tagline">ANFR - Surveillance RF DVB-T</span>
+        </span>
+    </a>
+    <nav class="site-nav">
+        <a class="nav-link {% if request.endpoint == 'home' %}active{% endif %}" href="{{ url_for('home') }}">Accueil</a>
+        <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">Dashboard</a>
+    </nav>
+</header>

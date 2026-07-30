@@ -4,6 +4,8 @@ Toute la logique de requête est paramétrée (start, end, site) pour permettre
 une interrogation dynamique depuis l'API Flask, au lieu d'un export statique.
 """
 
+import csv
+import os
 import re
 from datetime import timedelta
 
@@ -11,12 +13,14 @@ import pandas as pd
 from influxdb import InfluxDBClient
 
 # ============================================================
-# CONFIGURATION - à adapter à ton environnement
+# CONFIGURATION - surchargeable via variables d'environnement
+# (fallback sur les valeurs ci-dessous si non définies, pour ne pas
+# casser un déploiement local existant)
 # ============================================================
-INFLUX_HOST = "localhost"        # ex: "marvin" ou l'IP du serveur InfluxDB
-INFLUX_PORT = 8086
-INFLUX_USER = None                # None si pas d'auth, sinon "user"
-INFLUX_PASSWORD = None            # None si pas d'auth, sinon "password"
+INFLUX_HOST = os.environ.get("INFLUX_HOST", "localhost")
+INFLUX_PORT = int(os.environ.get("INFLUX_PORT", "8086"))
+INFLUX_USER = os.environ.get("INFLUX_USER") or None
+INFLUX_PASSWORD = os.environ.get("INFLUX_PASSWORD") or None
 
 # Bases système à ne jamais proposer dans la liste des "sites"
 IGNORED_DATABASES = {"_internal"}
@@ -33,6 +37,52 @@ MEASUREMENT_LABELS = {
 }
 
 DEFAULT_MEASUREMENT = "signal"
+
+# Fichier CSV des coordonnées de sites: site,latitude,longitude
+SITE_LOCATIONS_FILE = os.environ.get(
+    "SITE_LOCATIONS_FILE",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "sites_locations.csv"),
+)
+
+
+def load_site_locations() -> dict:
+    """
+    Charge les coordonnées des sites depuis SITE_LOCATIONS_FILE (CSV avec
+    colonnes site,latitude,longitude). Renvoie {site: {"lat": float, "lon": float}}.
+    Un site absent du fichier, une ligne mal formée, ou le fichier lui-même
+    manquant ne provoquent pas d'erreur: le site sera simplement absent de la carte.
+
+    Le séparateur (virgule ou point-virgule) est détecté automatiquement, car
+    un CSV édité/exporté depuis Excel en France utilise souvent ";" plutôt
+    que ",". encoding="utf-8-sig" gère aussi le BOM qu'Excel ajoute parfois.
+    """
+    locations = {}
+    if not os.path.exists(SITE_LOCATIONS_FILE):
+        return locations
+
+    with open(SITE_LOCATIONS_FILE, newline="", encoding="utf-8-sig") as f:
+        sample = f.read(2048)
+        f.seek(0)
+        try:
+            dialect = csv.Sniffer().sniff(sample, delimiters=",;")
+        except csv.Error:
+            dialect = csv.excel  # repli sur la virgule si la détection échoue
+
+        reader = csv.DictReader(f, dialect=dialect)
+        for row in reader:
+            site = (row.get("site") or "").strip()
+            lat_raw = row.get("latitude")
+            lon_raw = row.get("longitude")
+            if not site or lat_raw is None or lon_raw is None:
+                continue
+            try:
+                locations[site] = {"lat": float(lat_raw), "lon": float(lon_raw)}
+            except (ValueError, TypeError):
+                continue
+    return locations
+
+# Seuil (en minutes) au-delà duquel un site hors ligne passe en 3e catégorie
+OFFLINE_LONG_THRESHOLD_MINUTES = 5 * 24 * 60  # 5 jours
 
 
 def get_client(database: str = None) -> InfluxDBClient:
@@ -112,15 +162,35 @@ def list_measurements(database: str) -> list:
     return sorted(p["name"] for p in result.get_points())
 
 
+def classify_site_status(minutes_since_last, online_threshold_minutes) -> str:
+    """
+    Retourne une des 3 catégories :
+    - "online"         : dernière donnée dans le seuil "en ligne" (ex: 5 min)
+    - "offline_recent" : hors ligne, mais dernière donnée reçue il y a moins de 5 jours
+    - "offline_long"    : hors ligne depuis plus de 5 jours (ou aucune donnée connue)
+    """
+    if minutes_since_last is None:
+        return "offline_long"
+    if minutes_since_last <= online_threshold_minutes:
+        return "online"
+    if minutes_since_last <= OFFLINE_LONG_THRESHOLD_MINUTES:
+        return "offline_recent"
+    return "offline_long"
+
+
 def get_site_status(database: str, inactive_threshold_minutes: float = 5) -> dict:
     """
     Statut d'un site (base InfluxDB) : en ligne/hors ligne (basé sur la dernière
     mesure "signal", inactif si > inactive_threshold_minutes), + un maximum de
     stats annexes (fréquences actives, dernière température, volume de points).
+
+    Le champ "category" classe le site en 3 groupes :
+    online / offline_recent (< 5 jours) / offline_long (>= 5 jours ou jamais vu).
     """
     status = {
         "site": database,
         "online": False,
+        "category": None,
         "last_seen": None,
         "minutes_since_last": None,
         "active_frequencies": None,
@@ -137,11 +207,13 @@ def get_site_status(database: str, inactive_threshold_minutes: float = 5) -> dic
         points = list(result.get_points())
     except Exception as e:
         status["error"] = str(e)
+        status["category"] = classify_site_status(None, inactive_threshold_minutes)
         return status
 
     if not points:
         status["error"] = "Aucune donnée dans la measurement signal"
         status["measurements"] = list_measurements(database)
+        status["category"] = classify_site_status(None, inactive_threshold_minutes)
         return status
 
     last_time = pd.to_datetime(points[0]["time"], utc=True)
@@ -151,6 +223,7 @@ def get_site_status(database: str, inactive_threshold_minutes: float = 5) -> dic
     status["last_seen"] = last_time.isoformat()
     status["minutes_since_last"] = round(delta_minutes, 1)
     status["online"] = delta_minutes <= inactive_threshold_minutes
+    status["category"] = classify_site_status(delta_minutes, inactive_threshold_minutes)
 
     # Nombre de fréquences ayant reporté dans les 10 dernières minutes
     try:
@@ -187,6 +260,8 @@ def get_site_status(database: str, inactive_threshold_minutes: float = 5) -> dic
 
 def get_all_sites_status(inactive_threshold_minutes: float = 5) -> list:
     return [get_site_status(db, inactive_threshold_minutes) for db in list_databases()]
+
+
 def _ensure_rfc3339(ts: str) -> str:
     """S'assure que le timestamp a un suffixe de timezone (Z ou +HH:MM),
     sinon InfluxDB renvoie 'invalid timestamp string'."""
