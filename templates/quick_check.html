@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta http-equiv="refresh" content="60">
 <title>Quick Check — SondeX</title>
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -16,44 +17,69 @@
     <p class="eyebrow">Réseau DVB-T · Surveillance</p>
     <h2>Quick Check — Signal des 24 dernières heures</h2>
     <p class="home-intro">
-        Vue rapide du niveau de signal par fréquence et par site, heure par heure.
-        Dégradé relatif à la période affichée : rouge = signal le plus faible
-        observé, vert = signal le plus fort observé. Survole un rectangle pour
-        voir l'heure et la valeur exacte.
+        Un coup d'œil rapide sur le signal de chaque sonde, sans avoir à
+        ouvrir le dashboard complet sonde par sonde.
     </p>
     <p class="home-meta">Actualisé le {{ generated_at }} · rafraîchissement auto 60s</p>
 </div>
 
 {% if error %}
 <div class="site-error quick-error">{{ error }}</div>
-{% elif grids|length == 0 %}
-<div class="empty-state">Aucune donnée de signal sur les 24 dernières heures.</div>
 {% endif %}
 
-{% for g in grids %}
-<div class="quick-panel">
-    <h3 class="quick-panel-title">{{ g.site }}</h3>
-    {% for f in g.frequencies %}
-    <div class="quick-row">
-        <div class="quick-row-label">
-            <span class="quick-freq-label">{{ f.label }}</span>
-            <span class="quick-freq-channels">{{ f.channels }}</span>
+{% if sites|length == 0 %}
+<div class="empty-state">Aucune base de données InfluxDB trouvée.</div>
+{% else %}
+<div class="quick-grid">
+    {% for site in sites %}
+    <div class="quick-card">
+        <div class="quick-card-header">
+            <span class="quick-card-title">{{ site }}</span>
+            <span class="quick-card-meta">
+                {% if quick_data[site].freq_count > 0 %}
+                    {{ quick_data[site].freq_count }} fréquence(s)
+                {% else %}
+                    —
+                {% endif %}
+            </span>
         </div>
-        <div class="quick-cells">
-            {% for c in f.cells %}
-            <span class="quick-cell"
-                  style="background:{{ c.color }}"
-                  title="{{ c.hour }} — {{ (c.value ~ ' dBm') if c.value is not none else 'pas de donnée' }}"></span>
-            {% endfor %}
-        </div>
+        {% if quick_data[site].traces|length > 0 %}
+        <div class="quick-plot" data-site="{{ site }}"></div>
+        {% else %}
+        <div class="quick-empty">Aucune donnée sur les 24 dernières heures</div>
+        {% endif %}
     </div>
     {% endfor %}
 </div>
-{% endfor %}
+{% endif %}
 
 </div>
 
 {% include "_footer.html" %}
+
+<script>
+    const QUICK_DATA = {{ quick_data|tojson }};
+
+    const plotLayout = {
+        margin: { l: 45, r: 10, t: 10, b: 30 },
+        height: 260,
+        paper_bgcolor: "#1b1e26",
+        plot_bgcolor: "#1b1e26",
+        font: { color: "#e8e8e8", size: 10 },
+        xaxis: { gridcolor: "#2a2e3a", showgrid: true },
+        yaxis: { title: "dBm", gridcolor: "#2a2e3a", showgrid: true },
+        showlegend: true,
+        legend: { orientation: "h", y: -0.22, font: { size: 9, color: "#9aa1b1" } },
+        hovermode: "closest",
+    };
+
+    document.querySelectorAll(".quick-plot").forEach((el) => {
+        const site = el.dataset.site;
+        const data = QUICK_DATA[site];
+        if (!data || data.traces.length === 0) return;
+        Plotly.newPlot(el, data.traces, plotLayout, { displayModeBar: false });
+    });
+</script>
 
 </body>
 </html>

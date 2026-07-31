@@ -17,7 +17,7 @@ from influxdb import InfluxDBClient
 # (fallback sur les valeurs ci-dessous si non définies, pour ne pas
 # casser un déploiement local existant)
 # ============================================================
-INFLUX_HOST = os.environ.get("INFLUX_HOST", "localhost")
+INFLUX_HOST = os.environ.get("INFLUX_HOST", "147.135.255.12")
 INFLUX_PORT = int(os.environ.get("INFLUX_PORT", "8086"))
 INFLUX_USER = os.environ.get("INFLUX_USER") or None
 INFLUX_PASSWORD = os.environ.get("INFLUX_PASSWORD") or None
@@ -256,83 +256,6 @@ def get_site_status(database: str, inactive_threshold_minutes: float = 5) -> dic
     status["measurements"] = list_measurements(database)
 
     return status
-
-
-def _color_for_value(value, vmin, vmax) -> str:
-    """
-    Dégradé rouge (faible) -> ambre -> vert (fort), calqué sur la même
-    palette que les statuts de site (online/offline_recent/offline_long),
-    pour une lecture cohérente sur toute l'app.
-    """
-    if vmax <= vmin:
-        t = 1.0
-    else:
-        t = (value - vmin) / (vmax - vmin)
-        t = max(0.0, min(1.0, t))
-
-    stops = [(0.0, (255, 77, 79)), (0.5, (255, 159, 10)), (1.0, (52, 199, 89))]
-    for (t0, c0), (t1, c1) in zip(stops, stops[1:]):
-        if t0 <= t <= t1:
-            local_t = (t - t0) / (t1 - t0) if t1 > t0 else 0
-            r = round(c0[0] + (c1[0] - c0[0]) * local_t)
-            g = round(c0[1] + (c1[1] - c0[1]) * local_t)
-            b = round(c0[2] + (c1[2] - c0[2]) * local_t)
-            return f"#{r:02x}{g:02x}{b:02x}"
-    return "#9aa1b1"
-
-
-def build_quick_check_grids(df: pd.DataFrame, hours: int = 2024) -> list:
-    """
-    Construit, pour chaque site, une grille fréquence x heure (dernières
-    `hours` heures) de petits rectangles colorés selon le niveau de signal.
-    La couleur est relative au min/max observé sur l'ensemble des données
-    de la période (pas de seuil dBm absolu supposé).
-    """
-    if df.empty:
-        return []
-
-    df = df.copy()
-    df["hour"] = df["time"].dt.floor("h")
-
-    now = pd.Timestamp.now(tz="UTC").floor("h")
-    hour_buckets = [now - pd.Timedelta(hours=i) for i in range(hours - 1, -1, -1)]
-
-    vmin = df["value"].min()
-    vmax = df["value"].max()
-
-    grids = []
-    for site in sorted(df["site"].unique()):
-        site_df = df[df["site"] == site]
-        frequencies = sorted(site_df["frequence_hz"].unique(), key=lambda x: (len(x), x))
-
-        freq_rows = []
-        for freq in frequencies:
-            freq_df = site_df[site_df["frequence_hz"] == freq]
-            derniere_chaine = freq_df["chaines"].iloc[-1] if not freq_df["chaines"].isna().all() else ""
-            freq_mhz = int(freq) / 1_000_000 if freq.isdigit() else freq
-            label = f"{freq_mhz:.0f} MHz" if isinstance(freq_mhz, float) else freq
-
-            lookup = freq_df.set_index("hour")["value"].to_dict()
-
-            cells = []
-            for h in hour_buckets:
-                val = lookup.get(h)
-                if val is None:
-                    cells.append({"hour": h.strftime("%Hh"), "value": None, "color": "#2a2e3a"})
-                else:
-                    cells.append(
-                        {
-                            "hour": h.strftime("%Hh"),
-                            "value": round(float(val), 1),
-                            "color": _color_for_value(val, vmin, vmax),
-                        }
-                    )
-
-            freq_rows.append({"label": label, "channels": derniere_chaine or "—", "cells": cells})
-
-        grids.append({"site": site, "frequencies": freq_rows})
-
-    return grids
 
 
 def get_all_sites_status(inactive_threshold_minutes: float = 5) -> list:

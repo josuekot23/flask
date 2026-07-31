@@ -546,61 +546,47 @@ ul.freq-list {
 }
 
 /* ============================================================
-   Quick Check : grille fréquence x heure, petits rectangles colorés
+   Quick Check : petit graphique par sonde, en grille
    ============================================================ */
 .quick-error {
     max-width: 640px;
     margin-bottom: 16px;
 }
-.quick-panel {
+.quick-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 16px;
+}
+.quick-card {
     background: #1b1e26;
     border: 1px solid #2a2e3a;
     border-radius: 8px;
-    padding: 14px 18px;
-    margin-bottom: 16px;
+    padding: 14px 16px 6px;
 }
-.quick-panel-title {
-    margin: 0 0 12px;
+.quick-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+}
+.quick-card-title {
     font-size: 15px;
     font-weight: 700;
     text-transform: capitalize;
 }
-.quick-row {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 5px 0;
-    border-bottom: 1px solid #20232c;
-}
-.quick-row:last-child {
-    border-bottom: none;
-}
-.quick-row-label {
-    display: flex;
-    flex-direction: column;
-    min-width: 150px;
-    max-width: 220px;
-    flex-shrink: 0;
-}
-.quick-freq-label {
-    font-size: 13px;
-    font-weight: 600;
-}
-.quick-freq-channels {
+.quick-card-meta {
     font-size: 11px;
     color: #6b7185;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
-.quick-cells {
+.quick-plot {
+    width: 100%;
+    min-height: 260px;
+}
+.quick-empty {
     display: flex;
-    gap: 2px;
-    flex-wrap: wrap;
-}
-.quick-cell {
-    width: 14px;
-    height: 20px;
-    border-radius: 2px;
-    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    color: #6b7185;
+    font-size: 13px;
 }

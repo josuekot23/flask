@@ -187,22 +187,34 @@ def quick_check():
     start_dt = end_dt - timedelta(hours=24)
     start_rfc3339 = start_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
     end_rfc3339 = end_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    interval = rf.pick_group_interval(timedelta(hours=24))
 
+    sites = rf.list_databases()
     error = None
-    grids = []
+    quick_data = {site: {"traces": [], "freq_count": 0} for site in sites}
+
     try:
         df = rf.fetch_data(
-            start_rfc3339, end_rfc3339, database=None, group_interval="1h", measurement="signal"
+            start_rfc3339, end_rfc3339, database=None, group_interval=interval, measurement="signal"
         )
-        grids = rf.build_quick_check_grids(df, hours=24)
     except Exception as e:
+        df = None
         error = f"Erreur InfluxDB: {e}"
+
+    if df is not None and not df.empty:
+        for site in sites:
+            site_df = df[df["site"] == site]
+            if site_df.empty:
+                continue
+            traces, freq_info = build_traces(site_df, "Signal (dBm)")
+            quick_data[site] = {"traces": traces, "freq_count": len(freq_info)}
 
     generated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
 
     return render_template(
         "quick_check.html",
-        grids=grids,
+        sites=sites,
+        quick_data=quick_data,
         error=error,
         generated_at=generated_at,
     )
