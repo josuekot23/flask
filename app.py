@@ -195,7 +195,7 @@ def quick_check():
 
     try:
         df = rf.fetch_data(
-            start_rfc3339, end_rfc3339, database=None, group_interval=interval, measurement="signal"
+            start_rfc3339, end_rfc3339, database=None, group_interval=interval, measurement="extrapolation"
         )
     except Exception as e:
         df = None
