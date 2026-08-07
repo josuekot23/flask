@@ -17,7 +17,7 @@ from influxdb import InfluxDBClient
 # (fallback sur les valeurs ci-dessous si non définies, pour ne pas
 # casser un déploiement local existant)
 # ============================================================
-INFLUX_HOST = os.environ.get("INFLUX_HOST", "147.135.255.12")
+INFLUX_HOST = os.environ.get("INFLUX_HOST", "localhost")
 INFLUX_PORT = int(os.environ.get("INFLUX_PORT", "8086"))
 INFLUX_USER = os.environ.get("INFLUX_USER") or None
 INFLUX_PASSWORD = os.environ.get("INFLUX_PASSWORD") or None
@@ -26,17 +26,17 @@ INFLUX_PASSWORD = os.environ.get("INFLUX_PASSWORD") or None
 IGNORED_DATABASES = {"_internal"}
 
 # Mesures disponibles (measurement InfluxDB == nom du champ, par convention du schéma)
-AVAILABLE_MEASUREMENTS = ["extrapolation", "cn", "signal", "postber", "preber"]
+AVAILABLE_MEASUREMENTS = ["signal", "cn", "extrapolation", "postber", "preber"]
 
 MEASUREMENT_LABELS = {
-    "extrapolation": "Extrapolation",
-    "cn": "C/N (dB)",
     "signal": "Signal (dBm)",
+    "cn": "C/N (dB)",
+    "extrapolation": "Extrapolation",
     "postber": "Post-BER",
     "preber": "Pre-BER",
 }
 
-DEFAULT_MEASUREMENT = "extrapolation"
+DEFAULT_MEASUREMENT = "signal"
 
 # Fichier CSV des coordonnées de sites: site,latitude,longitude
 SITE_LOCATIONS_FILE = os.environ.get(
@@ -145,6 +145,28 @@ def pick_group_interval(span: timedelta) -> str:
     if span <= timedelta(days=30):
         return "15m"
     return "1h"
+
+
+# Mesures où "frequence" est un TAG InfluxDB (donc groupable via GROUP BY
+# InfluxQL). Sur "signal", "frequence" est un FIELD (texte), pas un tag —
+# InfluxQL ne peut pas grouper dessus, il faut le faire côté pandas.
+# À ajuster si le schéma d'écriture des sondes change.
+MEASUREMENTS_WITH_FREQUENCE_TAG = {"cn", "extrapolation", "postber", "preber"}
+
+
+def _influx_interval_to_pandas_freq(interval: str) -> str:
+    """
+    Convertit une durée InfluxQL ('10s', '1m', '5m', '15m', '1h') en
+    fréquence pandas équivalente pour pd.Grouper. Nécessaire car InfluxQL
+    utilise 'm' pour les minutes, alors qu'en pandas 'm' signifie "mois"
+    (il faut 'min').
+    """
+    match = re.match(r"^(\d+)([smh])$", interval or "")
+    if not match:
+        return "1min"
+    value, unit = match.groups()
+    pandas_unit = {"s": "s", "m": "min", "h": "h"}[unit]
+    return f"{value}{pandas_unit}"
 
 
 # ============================================================
