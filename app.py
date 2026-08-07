@@ -48,7 +48,7 @@ def build_traces(df, measurement_label):
                 "y": sub["value"].tolist(),
                 "mode": "lines",
                 "name": label,
-                "line": {"color": color_map[freq], "width": 1.5},
+                "line": {"color": color_map[freq], "width": 1.5, "shape": "spline", "smoothing": 0.9},
                 "hovertemplate": (
                     f"<b>{label}</b><br>%{{x}}<br>{measurement_label}: %{{y}}<br>"
                     f"Chaînes: {derniere_chaine}<extra></extra>"
@@ -83,7 +83,7 @@ def build_temperature_traces(df):
                 "y": sub["value"].round(2).tolist(),
                 "mode": "lines",
                 "name": s,
-                "line": {"color": color_map[s], "width": 1.5},
+                "line": {"color": color_map[s], "width": 1.5, "shape": "spline", "smoothing": 0.9},
                 "hovertemplate": f"<b>{s}</b><br>%{{x}}<br>Température: %{{y:.1f}} °C<extra></extra>",
             }
         )
@@ -195,7 +195,7 @@ def quick_check():
 
     try:
         df = rf.fetch_data(
-            start_rfc3339, end_rfc3339, database=None, group_interval=interval, measurement="extrapolation"
+            start_rfc3339, end_rfc3339, database=None, group_interval=interval, measurement="signal"
         )
     except Exception as e:
         df = None
