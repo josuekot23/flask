@@ -26,17 +26,17 @@ INFLUX_PASSWORD = os.environ.get("INFLUX_PASSWORD") or None
 IGNORED_DATABASES = {"_internal"}
 
 # Mesures disponibles (measurement InfluxDB == nom du champ, par convention du schéma)
-AVAILABLE_MEASUREMENTS = ["signal", "cn", "extrapolation", "postber", "preber"]
+AVAILABLE_MEASUREMENTS = ["extrapolation", "cn", "signal", "postber", "preber"]
 
 MEASUREMENT_LABELS = {
-    "signal": "Signal (dBm)",
-    "cn": "C/N (dB)",
     "extrapolation": "Extrapolation",
+    "cn": "C/N (dB)",
+    "signal": "Signal (dBm)",
     "postber": "Post-BER",
     "preber": "Pre-BER",
 }
 
-DEFAULT_MEASUREMENT = "signal"
+DEFAULT_MEASUREMENT = "extrapolation"
 
 # Fichier CSV des coordonnées de sites: site,latitude,longitude
 SITE_LOCATIONS_FILE = os.environ.get(
