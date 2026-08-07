@@ -300,31 +300,58 @@ def _fetch_from_database(database: str, start_iso: str, end_iso: str, group_inte
 
     start_iso = _ensure_rfc3339(start_iso)
     end_iso = _ensure_rfc3339(end_iso)
-
     where_sql = f"time >= '{start_iso}' AND time <= '{end_iso}'"
-    query = f"""
-        SELECT mean("{measurement}") AS value
-        FROM "{measurement}"
-        WHERE {where_sql}
-        GROUP BY time({group_interval}), "frequence" fill(none)
-    """
 
-    result = client.query(query)
+    if measurement in MEASUREMENTS_WITH_FREQUENCE_TAG:
+        # "frequence" est un tag ici: InfluxQL peut grouper dessus directement,
+        # l'agrégation par intervalle se fait donc côté InfluxDB.
+        query = f"""
+            SELECT mean("{measurement}") AS value
+            FROM "{measurement}"
+            WHERE {where_sql}
+            GROUP BY time({group_interval}), "frequence" fill(none)
+        """
+        result = client.query(query)
 
-    rows = []
-    for (meas, tags), series in result.items():
-        raw_freq = (tags or {}).get("frequence", "inconnue")
-        for point in series:
-            rows.append(
-                {
-                    "time": point["time"],
-                    "value": point["value"],
-                    "raw_frequence": raw_freq,
-                    "site": database,
-                }
+        rows = []
+        for (meas, tags), series in result.items():
+            raw_freq = (tags or {}).get("frequence", "inconnue")
+            for point in series:
+                rows.append(
+                    {
+                        "time": point["time"],
+                        "value": point["value"],
+                        "raw_frequence": raw_freq,
+                        "site": database,
+                    }
+                )
+        df = pd.DataFrame(rows)
+
+    else:
+        # "frequence" est un field (texte) ici, ex: "signal". InfluxQL ne peut
+        # pas faire GROUP BY dessus, donc on récupère les points bruts et on
+        # fait le regroupement temps+fréquence en pandas. Coût: pas de
+        # réduction de volume côté InfluxDB pour cette mesure (à surveiller
+        # sur de très longues périodes, ex: > 30 jours).
+        query = f"""
+            SELECT "{measurement}" AS value, "frequence" AS raw_frequence
+            FROM "{measurement}"
+            WHERE {where_sql}
+        """
+        result = client.query(query)
+        rows = list(result.get_points())
+        df = pd.DataFrame(rows)
+
+        if not df.empty:
+            df["site"] = database
+            df["time"] = pd.to_datetime(df["time"])
+            pandas_freq = _influx_interval_to_pandas_freq(group_interval)
+            df = (
+                df.groupby([pd.Grouper(key="time", freq=pandas_freq), "raw_frequence", "site"])["value"]
+                .mean()
+                .reset_index()
             )
 
-    df = pd.DataFrame(rows)
     if df.empty:
         return df
 
