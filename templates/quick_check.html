@@ -48,6 +48,7 @@
         {% else %}
         <div class="quick-empty">Aucune donnée sur les 24 dernières heures</div>
         {% endif %}
+        <a class="consult-btn" href="{{ url_for('dashboard', site=site) }}">Consulter →</a>
     </div>
     {% endfor %}
 </div>

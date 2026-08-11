@@ -590,3 +590,6 @@ ul.freq-list {
     color: #6b7185;
     font-size: 13px;
 }
+.quick-card .consult-btn {
+    margin: 10px 0 14px;
+}
