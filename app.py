@@ -11,12 +11,16 @@ Lancement:
 """
 
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 import colorsys
 
 from flask import Flask, jsonify, render_template, request, url_for
 import plotly.express as px
 
 import rf_data as rf
+
+PARIS_TZ = ZoneInfo("Europe/Paris")
+UTC_TZ = ZoneInfo("UTC")
 
 app = Flask(__name__)
 
@@ -61,11 +65,11 @@ def build_traces(df, measurement_label):
 
         traces.append(
             {
-                "x": sub["time"].dt.strftime("%Y-%m-%dT%H:%M:%S").tolist(),
+                "x": sub["time"].dt.tz_convert(PARIS_TZ).dt.strftime("%Y-%m-%dT%H:%M:%S").tolist(),
                 "y": sub["value"].tolist(),
                 "mode": "lines",
                 "name": label,
-                "line": {"color": color_map[freq], "width": 1.5, "shape": "spline", "smoothing": 0.9},
+                "line": {"color": color_map[freq], "width": 1.2},
                 "hovertemplate": (
                     f"<b>{label}</b><br>%{{x}}<br>{measurement_label}: %{{y}}<br>"
                     f"Chaînes: {derniere_chaine}<extra></extra>"
@@ -96,11 +100,11 @@ def build_temperature_traces(df):
         sub = df[df["site"] == s]
         traces.append(
             {
-                "x": sub["time"].dt.strftime("%Y-%m-%dT%H:%M:%S").tolist(),
+                "x": sub["time"].dt.tz_convert(PARIS_TZ).dt.strftime("%Y-%m-%dT%H:%M:%S").tolist(),
                 "y": sub["value"].round(2).tolist(),
                 "mode": "lines",
                 "name": s,
-                "line": {"color": color_map[s], "width": 1.5, "shape": "spline", "smoothing": 0.9},
+                "line": {"color": color_map[s], "width": 1.5},
                 "hovertemplate": f"<b>{s}</b><br>%{{x}}<br>Température: %{{y:.1f}} °C<extra></extra>",
             }
         )
@@ -129,7 +133,8 @@ def home():
         s["time_ago"] = format_time_ago(s.get("minutes_since_last"))
         if s.get("last_seen"):
             try:
-                s["last_seen_fmt"] = datetime.fromisoformat(s["last_seen"]).strftime("%Y-%m-%d %H:%M UTC")
+                dt_utc = datetime.fromisoformat(s["last_seen"])
+                s["last_seen_fmt"] = dt_utc.astimezone(PARIS_TZ).strftime("%Y-%m-%d %H:%M %Z")
             except Exception:
                 s["last_seen_fmt"] = s["last_seen"]
         else:
@@ -168,7 +173,7 @@ def home():
                 }
             )
 
-    generated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    generated_at = datetime.now(PARIS_TZ).strftime("%Y-%m-%d %H:%M:%S %Z")
 
     return render_template(
         "home.html",
@@ -226,7 +231,7 @@ def quick_check():
             traces, freq_info = build_traces(site_df, "Signal (dBm)")
             quick_data[site] = {"traces": traces, "freq_count": len(freq_info)}
 
-    generated_at = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    generated_at = datetime.now(PARIS_TZ).strftime("%Y-%m-%d %H:%M:%S %Z")
 
     return render_template(
         "quick_check.html",
@@ -254,8 +259,11 @@ def api_signal():
         return jsonify({"error": "Paramètres 'start' et 'end' requis (ISO 8601)."}), 400
 
     try:
-        start_dt = datetime.fromisoformat(start)
-        end_dt = datetime.fromisoformat(end)
+        # Les champs datetime-local du formulaire sont dans l'heure du
+        # navigateur (Paris) ; on les interprète comme telles avant de
+        # convertir en UTC pour interroger InfluxDB (qui stocke en UTC).
+        start_dt = datetime.fromisoformat(start).replace(tzinfo=PARIS_TZ)
+        end_dt = datetime.fromisoformat(end).replace(tzinfo=PARIS_TZ)
     except ValueError:
         return jsonify({"error": "Format de date invalide."}), 400
 
@@ -264,8 +272,8 @@ def api_signal():
 
     interval = rf.pick_group_interval(end_dt - start_dt)
 
-    start_rfc3339 = start_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-    end_rfc3339 = end_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    start_rfc3339 = start_dt.astimezone(UTC_TZ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    end_rfc3339 = end_dt.astimezone(UTC_TZ).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     try:
         df = rf.fetch_data(
@@ -303,8 +311,8 @@ def api_temperature():
         return jsonify({"error": "Paramètres 'start' et 'end' requis (ISO 8601)."}), 400
 
     try:
-        start_dt = datetime.fromisoformat(start)
-        end_dt = datetime.fromisoformat(end)
+        start_dt = datetime.fromisoformat(start).replace(tzinfo=PARIS_TZ)
+        end_dt = datetime.fromisoformat(end).replace(tzinfo=PARIS_TZ)
     except ValueError:
         return jsonify({"error": "Format de date invalide."}), 400
 
@@ -312,8 +320,8 @@ def api_temperature():
         return jsonify({"error": "La date de fin doit être après la date de début."}), 400
 
     interval = rf.pick_group_interval(end_dt - start_dt)
-    start_rfc3339 = start_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-    end_rfc3339 = end_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    start_rfc3339 = start_dt.astimezone(UTC_TZ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    end_rfc3339 = end_dt.astimezone(UTC_TZ).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     try:
         df = rf.fetch_temperature(start_rfc3339, end_rfc3339, database=site, group_interval=interval)

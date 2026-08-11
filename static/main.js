@@ -72,7 +72,7 @@ async function loadData() {
 function renderPlot(traces, measurementLabel) {
     const layout = {
         title: `${measurementLabel || "Valeur"} par fréquence (DVB-T/TNT)`,
-        xaxis: { title: "Temps" },
+        xaxis: { title: "Temps (heure de Paris)" },
         yaxis: { title: measurementLabel || "Valeur" },
         hovermode: "closest",
         showlegend: false,
@@ -162,7 +162,7 @@ async function loadTemperatureData() {
 function renderTemperaturePlot(traces) {
     const layout = {
         title: "Température par site",
-        xaxis: { title: "Temps" },
+        xaxis: { title: "Temps (heure de Paris)" },
         yaxis: { title: "Température (°C)" },
         hovermode: "closest",
         showlegend: true,
