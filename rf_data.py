@@ -148,25 +148,12 @@ def pick_group_interval(span: timedelta) -> str:
 
 
 # Mesures où "frequence" est un TAG InfluxDB (donc groupable via GROUP BY
-# InfluxQL). Sur "signal", "frequence" est un FIELD (texte), pas un tag —
-# InfluxQL ne peut pas grouper dessus, il faut le faire côté pandas.
+# InfluxQL, avec agrégation par intervalle de temps). Sur "signal",
+# "frequence" est un FIELD (texte), pas un tag — InfluxQL ne peut pas
+# grouper dessus, donc "signal" est traité à part: données brutes, sans
+# agrégation temporelle (voir _fetch_from_database).
 # À ajuster si le schéma d'écriture des sondes change.
 MEASUREMENTS_WITH_FREQUENCE_TAG = {"cn", "extrapolation", "postber", "preber"}
-
-
-def _influx_interval_to_pandas_freq(interval: str) -> str:
-    """
-    Convertit une durée InfluxQL ('10s', '1m', '5m', '15m', '1h') en
-    fréquence pandas équivalente pour pd.Grouper. Nécessaire car InfluxQL
-    utilise 'm' pour les minutes, alors qu'en pandas 'm' signifie "mois"
-    (il faut 'min').
-    """
-    match = re.match(r"^(\d+)([smh])$", interval or "")
-    if not match:
-        return "1min"
-    value, unit = match.groups()
-    pandas_unit = {"s": "s", "m": "min", "h": "h"}[unit]
-    return f"{value}{pandas_unit}"
 
 
 # ============================================================
@@ -329,10 +316,10 @@ def _fetch_from_database(database: str, start_iso: str, end_iso: str, group_inte
 
     else:
         # "frequence" est un field (texte) ici, ex: "signal". InfluxQL ne peut
-        # pas faire GROUP BY dessus, donc on récupère les points bruts et on
-        # fait le regroupement temps+fréquence en pandas. Coût: pas de
-        # réduction de volume côté InfluxDB pour cette mesure (à surveiller
-        # sur de très longues périodes, ex: > 30 jours).
+        # pas faire GROUP BY dessus, donc on récupère les points bruts.
+        # Contrairement aux mesures ci-dessus, on ne fait PAS de moyenne par
+        # intervalle de temps ici: "signal" est affiché en données brutes,
+        # point par point, sans fusion/agrégation.
         query = f"""
             SELECT "{measurement}" AS value, "frequence" AS raw_frequence
             FROM "{measurement}"
@@ -345,12 +332,6 @@ def _fetch_from_database(database: str, start_iso: str, end_iso: str, group_inte
         if not df.empty:
             df["site"] = database
             df["time"] = pd.to_datetime(df["time"])
-            pandas_freq = _influx_interval_to_pandas_freq(group_interval)
-            df = (
-                df.groupby([pd.Grouper(key="time", freq=pandas_freq), "raw_frequence", "site"])["value"]
-                .mean()
-                .reset_index()
-            )
 
     if df.empty:
         return df
