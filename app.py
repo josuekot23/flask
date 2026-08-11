@@ -11,6 +11,7 @@ Lancement:
 """
 
 from datetime import datetime, timedelta
+import colorsys
 
 from flask import Flask, jsonify, render_template, request, url_for
 import plotly.express as px
@@ -25,13 +26,29 @@ def inject_globals():
     return {"current_year": datetime.utcnow().year}
 
 
+def _generate_distinct_colors(n):
+    """
+    Génère n couleurs réparties uniformément sur la roue chromatique (teinte
+    espacée de 360°/n), pour une séparation visuelle maximale entre courbes
+    quel que soit le nombre de fréquences — contrairement à une palette fixe
+    qui recycle des teintes proches au-delà d'un certain nombre de séries.
+    """
+    colors = []
+    n = max(n, 1)
+    for i in range(n):
+        hue = i / n
+        r, g, b = colorsys.hsv_to_rgb(hue, 0.65, 0.95)
+        colors.append(f"rgb({int(r * 255)},{int(g * 255)},{int(b * 255)})")
+    return colors
+
+
 def build_traces(df, measurement_label):
     """Construit les traces Plotly (format JSON) + les infos de la liste de fréquences."""
     df = df.sort_values("time")
 
     frequencies = sorted(df["frequence_hz"].unique(), key=lambda x: (len(x), x))
-    palette = px.colors.qualitative.Plotly + px.colors.qualitative.Set3
-    color_map = {f: palette[i % len(palette)] for i, f in enumerate(frequencies)}
+    palette = _generate_distinct_colors(len(frequencies))
+    color_map = {f: palette[i] for i, f in enumerate(frequencies)}
 
     traces = []
     freq_info = []
