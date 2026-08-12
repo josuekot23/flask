@@ -117,11 +117,30 @@ def extract_frequency_prefix(raw_frequence: str) -> str:
     """
     '474000000: France2 France4 franceinfo: F3Midi-Pyrénées F3Aquitaine'
     -> '474000000'
+
+    Certains points ont un format légèrement différent (ancien firmware de
+    sonde, espace en tête, etc.) où le numéro de fréquence ne se trouve pas
+    strictement en tête de chaîne. Sans repli, ces points tombaient dans un
+    groupe distinct portant la chaîne brute entière comme "fréquence" (ex:
+    une entrée "514 MHz" propre ET une entrée "514000000: M6 W9..." séparée
+    pour la même fréquence physique). On cherche donc le numéro n'importe où
+    dans la chaîne en repli, avant d'abandonner sur "inconnue".
     """
     if raw_frequence is None:
         return "inconnue"
-    match = re.match(r"^\s*(\d+)", str(raw_frequence))
-    return match.group(1) if match else str(raw_frequence)
+    text = str(raw_frequence).strip()
+
+    match = re.match(r"^(\d{5,})", text)
+    if match:
+        return match.group(1)
+
+    # Repli: numéro de fréquence (5 chiffres ou plus, pour ne pas confondre
+    # avec un numéro de chaîne) trouvé ailleurs dans la chaîne.
+    match = re.search(r"(\d{5,})", text)
+    if match:
+        return match.group(1)
+
+    return "inconnue"
 
 
 def extract_channels(raw_frequence: str) -> str:
@@ -144,14 +163,22 @@ def pick_group_interval(span: timedelta) -> str:
         return "5m"
     if span <= timedelta(days=30):
         return "15m"
-    return "1h"
+    if span <= timedelta(days=90):
+        return "1h"
+    if span <= timedelta(days=180):
+        return "3h"
+    # Au-delà de 6 mois (ex: un an complet), des buckets de 3h donneraient
+    # encore ~2900 points par fréquence. On passe à 6h pour rester lisible
+    # même sur de très longues périodes (ex: 1 an -> ~1460 points/fréquence).
+    return "6h"
 
 
 # Mesures où "frequence" est un TAG InfluxDB (donc groupable via GROUP BY
-# InfluxQL, avec agrégation par intervalle de temps). Sur "signal",
-# "frequence" est un FIELD (texte), pas un tag — InfluxQL ne peut pas
-# grouper dessus, donc "signal" est traité à part: données brutes, sans
-# agrégation temporelle (voir _fetch_from_database).
+# InfluxQL, avec agrégation par intervalle de temps directement côté
+# InfluxDB). Sur "signal", "frequence" est un FIELD (texte), pas un tag —
+# InfluxQL ne peut pas grouper dessus, donc "signal" est agrégé côté pandas
+# à la place (même résultat final: une moyenne par intervalle de temps et
+# par fréquence), voir _fetch_from_database.
 # À ajuster si le schéma d'écriture des sondes change.
 MEASUREMENTS_WITH_FREQUENCE_TAG = {"cn", "extrapolation", "postber", "preber"}
 
@@ -279,6 +306,21 @@ def _ensure_rfc3339(ts: str) -> str:
     return ts + "Z"
 
 
+def _influx_interval_to_pandas_freq(interval: str) -> str:
+    """
+    Convertit une durée InfluxQL ('10s', '1m', '5m', '15m', '1h', '3h', '6h')
+    en fréquence pandas équivalente pour pd.Grouper. Nécessaire car InfluxQL
+    utilise 'm' pour les minutes, alors qu'en pandas 'm' signifie "mois"
+    (il faut 'min').
+    """
+    match = re.match(r"^(\d+)([smh])$", interval or "")
+    if not match:
+        return "1min"
+    value, unit = match.groups()
+    pandas_unit = {"s": "s", "m": "min", "h": "h"}[unit]
+    return f"{value}{pandas_unit}"
+
+
 def _fetch_from_database(database: str, start_iso: str, end_iso: str, group_interval: str, measurement: str) -> pd.DataFrame:
     if measurement not in AVAILABLE_MEASUREMENTS:
         raise ValueError(f"Mesure inconnue: {measurement}")
@@ -316,10 +358,11 @@ def _fetch_from_database(database: str, start_iso: str, end_iso: str, group_inte
 
     else:
         # "frequence" est un field (texte) ici, ex: "signal". InfluxQL ne peut
-        # pas faire GROUP BY dessus, donc on récupère les points bruts.
-        # Contrairement aux mesures ci-dessus, on ne fait PAS de moyenne par
-        # intervalle de temps ici: "signal" est affiché en données brutes,
-        # point par point, sans fusion/agrégation.
+        # pas faire GROUP BY dessus, donc on récupère les points bruts puis
+        # on agrège par intervalle de temps + fréquence en pandas — même
+        # principe que la branche tag ci-dessus, juste calculé côté Flask
+        # plutôt que par InfluxDB. Nécessaire pour rester lisible sur de
+        # longues périodes (le brut devient vite illisible/lourd).
         query = f"""
             SELECT "{measurement}" AS value, "frequence" AS raw_frequence
             FROM "{measurement}"
@@ -332,12 +375,18 @@ def _fetch_from_database(database: str, start_iso: str, end_iso: str, group_inte
         if not df.empty:
             df["site"] = database
             df["time"] = pd.to_datetime(df["time"])
+            pandas_freq = _influx_interval_to_pandas_freq(group_interval)
+            df = (
+                df.groupby([pd.Grouper(key="time", freq=pandas_freq), "raw_frequence", "site"])["value"]
+                .mean()
+                .reset_index()
+            )
 
     if df.empty:
         return df
 
     df["time"] = pd.to_datetime(df["time"])
-    df["frequence_hz"] = df["raw_frequence"]#.apply(extract_frequency_prefix)
+    df["frequence_hz"] = df["raw_frequence"].apply(extract_frequency_prefix)
     df["chaines"] = df["raw_frequence"].apply(extract_channels)
     return df
 
