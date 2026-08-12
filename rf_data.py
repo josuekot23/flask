@@ -386,7 +386,7 @@ def _fetch_from_database(database: str, start_iso: str, end_iso: str, group_inte
         return df
 
     df["time"] = pd.to_datetime(df["time"])
-    df["frequence_hz"] = df["raw_frequence"].apply(extract_frequency_prefix)
+    df["frequence_hz"] = df["raw_frequence"]#.apply(extract_frequency_prefix)
     df["chaines"] = df["raw_frequence"].apply(extract_channels)
     return df
 
