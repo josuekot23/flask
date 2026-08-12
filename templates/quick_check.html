@@ -74,11 +74,35 @@
         hovermode: "closest",
     };
 
+    function computeYRange(traces, minSpan = 15, paddingRatio = 0.1) {
+        let min = Infinity;
+        let max = -Infinity;
+        traces.forEach((t) => {
+            (t.y || []).forEach((v) => {
+                if (v === null || v === undefined || Number.isNaN(v)) return;
+                if (v < min) min = v;
+                if (v > max) max = v;
+            });
+        });
+        if (!Number.isFinite(min) || !Number.isFinite(max)) return undefined;
+
+        let span = max - min;
+        if (span < minSpan) {
+            const center = (max + min) / 2;
+            min = center - minSpan / 2;
+            max = center + minSpan / 2;
+            span = minSpan;
+        }
+        const pad = span * paddingRatio;
+        return [min - pad, max + pad];
+    }
+
     document.querySelectorAll(".quick-plot").forEach((el) => {
         const site = el.dataset.site;
         const data = QUICK_DATA[site];
         if (!data || data.traces.length === 0) return;
-        Plotly.newPlot(el, data.traces, plotLayout, { displayModeBar: false });
+        const layout = { ...plotLayout, yaxis: { ...plotLayout.yaxis, range: computeYRange(data.traces) } };
+        Plotly.newPlot(el, data.traces, layout, { displayModeBar: false });
     });
 </script>
 

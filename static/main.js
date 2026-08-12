@@ -69,11 +69,34 @@ async function loadData() {
     }
 }
 
+function computeYRange(traces, minSpan = 15, paddingRatio = 0.1) {
+    let min = Infinity;
+    let max = -Infinity;
+    traces.forEach((t) => {
+        (t.y || []).forEach((v) => {
+            if (v === null || v === undefined || Number.isNaN(v)) return;
+            if (v < min) min = v;
+            if (v > max) max = v;
+        });
+    });
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return undefined;
+
+    let span = max - min;
+    if (span < minSpan) {
+        const center = (max + min) / 2;
+        min = center - minSpan / 2;
+        max = center + minSpan / 2;
+        span = minSpan;
+    }
+    const pad = span * paddingRatio;
+    return [min - pad, max + pad];
+}
+
 function renderPlot(traces, measurementLabel) {
     const layout = {
         title: `${measurementLabel || "Valeur"} par fréquence (DVB-T/TNT)`,
         xaxis: { title: "Temps (heure de Paris)" },
-        yaxis: { title: measurementLabel || "Valeur" },
+        yaxis: { title: measurementLabel || "Valeur", range: computeYRange(traces) },
         hovermode: "closest",
         showlegend: false,
         height: 700,
