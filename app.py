@@ -10,7 +10,7 @@ Lancement:
     -> http://localhost:8050
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 import colorsys
 
@@ -19,15 +19,39 @@ import plotly.express as px
 
 import rf_data as rf
 
-PARIS_TZ = ZoneInfo("Europe/Paris")
-UTC_TZ = ZoneInfo("UTC")
+# Choix de fuseau pour l'affichage, sélectionnable depuis l'interface (menu
+# dans le header) et mémorisé dans un cookie. "auto" utilise la vraie base de
+# fuseaux horaires (bascule été/hiver automatique) ; utc1/utc2 forcent un
+# décalage fixe, utile si la bascule automatique s'avère peu fiable sur le
+# serveur, ou pour vérifier manuellement.
+TZ_CHOICES = {
+    "auto": "Auto (Europe/Paris)",
+    "utc1": "UTC+1",
+    "utc2": "UTC+2",
+}
+DEFAULT_TZ_CHOICE = "auto"
+UTC_TZ = timezone.utc
+
+
+def get_tz_choice() -> str:
+    choice = request.cookies.get("tz_choice", DEFAULT_TZ_CHOICE)
+    return choice if choice in TZ_CHOICES else DEFAULT_TZ_CHOICE
+
+
+def get_display_tz():
+    choice = get_tz_choice()
+    if choice == "utc1":
+        return timezone(timedelta(hours=1), name="UTC+1")
+    if choice == "utc2":
+        return timezone(timedelta(hours=2), name="UTC+2")
+    return ZoneInfo("Europe/Paris")
 
 app = Flask(__name__)
 
 
 @app.context_processor
 def inject_globals():
-    return {"current_year": datetime.utcnow().year}
+    return {"current_year": datetime.utcnow().year, "current_tz_choice": get_tz_choice()}
 
 
 def _generate_distinct_colors(n):
@@ -46,7 +70,7 @@ def _generate_distinct_colors(n):
     return colors
 
 
-def build_traces(df, measurement_label):
+def build_traces(df, measurement_label, display_tz):
     """Construit les traces Plotly (format JSON) + les infos de la liste de fréquences."""
     df = df.sort_values("time")
 
@@ -65,7 +89,7 @@ def build_traces(df, measurement_label):
 
         traces.append(
             {
-                "x": sub["time"].dt.tz_convert(PARIS_TZ).dt.strftime("%Y-%m-%dT%H:%M:%S").tolist(),
+                "x": sub["time"].dt.tz_convert(display_tz).dt.strftime("%Y-%m-%dT%H:%M:%S").tolist(),
                 "y": sub["value"].tolist(),
                 "mode": "lines",
                 "name": label,
@@ -88,7 +112,7 @@ def build_traces(df, measurement_label):
     return traces, freq_info
 
 
-def build_temperature_traces(df):
+def build_temperature_traces(df, display_tz):
     """Une courbe par site (pas de regroupement par fréquence pour la température)."""
     df = df.sort_values("time")
     sites = sorted(df["site"].unique())
@@ -100,7 +124,7 @@ def build_temperature_traces(df):
         sub = df[df["site"] == s]
         traces.append(
             {
-                "x": sub["time"].dt.tz_convert(PARIS_TZ).dt.strftime("%Y-%m-%dT%H:%M:%S").tolist(),
+                "x": sub["time"].dt.tz_convert(display_tz).dt.strftime("%Y-%m-%dT%H:%M:%S").tolist(),
                 "y": sub["value"].round(2).tolist(),
                 "mode": "lines",
                 "name": s,
@@ -127,6 +151,7 @@ def format_time_ago(minutes):
 
 @app.route("/")
 def home():
+    display_tz = get_display_tz()
     statuses = rf.get_all_sites_status(inactive_threshold_minutes=5)
 
     for s in statuses:
@@ -134,7 +159,7 @@ def home():
         if s.get("last_seen"):
             try:
                 dt_utc = datetime.fromisoformat(s["last_seen"])
-                s["last_seen_fmt"] = dt_utc.astimezone(PARIS_TZ).strftime("%Y-%m-%d %H:%M %Z")
+                s["last_seen_fmt"] = dt_utc.astimezone(display_tz).strftime("%Y-%m-%d %H:%M %Z")
             except Exception:
                 s["last_seen_fmt"] = s["last_seen"]
         else:
@@ -173,7 +198,7 @@ def home():
                 }
             )
 
-    generated_at = datetime.now(PARIS_TZ).strftime("%Y-%m-%d %H:%M:%S %Z")
+    generated_at = datetime.now(display_tz).strftime("%Y-%m-%d %H:%M:%S %Z")
 
     return render_template(
         "home.html",
@@ -205,6 +230,7 @@ def dashboard():
 
 @app.route("/quick-check")
 def quick_check():
+    display_tz = get_display_tz()
     end_dt = datetime.utcnow()
     start_dt = end_dt - timedelta(hours=24)
     start_rfc3339 = start_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -228,10 +254,10 @@ def quick_check():
             site_df = df[df["site"] == site]
             if site_df.empty:
                 continue
-            traces, freq_info = build_traces(site_df, "Signal (dBm)")
+            traces, freq_info = build_traces(site_df, "Signal (dBm)", display_tz)
             quick_data[site] = {"traces": traces, "freq_count": len(freq_info)}
 
-    generated_at = datetime.now(PARIS_TZ).strftime("%Y-%m-%d %H:%M:%S %Z")
+    generated_at = datetime.now(display_tz).strftime("%Y-%m-%d %H:%M:%S %Z")
 
     return render_template(
         "quick_check.html",
@@ -244,6 +270,7 @@ def quick_check():
 
 @app.route("/api/signal")
 def api_signal():
+    display_tz = get_display_tz()
     start = request.args.get("start")
     end = request.args.get("end")
     site = request.args.get("site") or None
@@ -259,11 +286,11 @@ def api_signal():
         return jsonify({"error": "Paramètres 'start' et 'end' requis (ISO 8601)."}), 400
 
     try:
-        # Les champs datetime-local du formulaire sont dans l'heure du
-        # navigateur (Paris) ; on les interprète comme telles avant de
+        # Les champs datetime-local du formulaire sont dans le fuseau
+        # d'affichage choisi ; on les interprète comme tel avant de
         # convertir en UTC pour interroger InfluxDB (qui stocke en UTC).
-        start_dt = datetime.fromisoformat(start).replace(tzinfo=PARIS_TZ)
-        end_dt = datetime.fromisoformat(end).replace(tzinfo=PARIS_TZ)
+        start_dt = datetime.fromisoformat(start).replace(tzinfo=display_tz)
+        end_dt = datetime.fromisoformat(end).replace(tzinfo=display_tz)
     except ValueError:
         return jsonify({"error": "Format de date invalide."}), 400
 
@@ -287,7 +314,7 @@ def api_signal():
     if df.empty:
         return jsonify({"traces": [], "freq_info": [], "interval": interval, "measurement_label": measurement_label})
 
-    traces, freq_info = build_traces(df, measurement_label)
+    traces, freq_info = build_traces(df, measurement_label, display_tz)
     return jsonify(
         {
             "traces": traces,
@@ -300,6 +327,7 @@ def api_signal():
 
 @app.route("/api/temperature")
 def api_temperature():
+    display_tz = get_display_tz()
     start = request.args.get("start")
     end = request.args.get("end")
     site = request.args.get("site") or None
@@ -311,8 +339,8 @@ def api_temperature():
         return jsonify({"error": "Paramètres 'start' et 'end' requis (ISO 8601)."}), 400
 
     try:
-        start_dt = datetime.fromisoformat(start).replace(tzinfo=PARIS_TZ)
-        end_dt = datetime.fromisoformat(end).replace(tzinfo=PARIS_TZ)
+        start_dt = datetime.fromisoformat(start).replace(tzinfo=display_tz)
+        end_dt = datetime.fromisoformat(end).replace(tzinfo=display_tz)
     except ValueError:
         return jsonify({"error": "Format de date invalide."}), 400
 
@@ -331,7 +359,7 @@ def api_temperature():
     if df.empty:
         return jsonify({"traces": [], "interval": interval})
 
-    traces = build_temperature_traces(df)
+    traces = build_temperature_traces(df, display_tz)
     return jsonify({"traces": traces, "interval": interval})
 
 

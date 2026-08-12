@@ -88,6 +88,15 @@ body {
     background: rgba(61, 107, 255, 0.15);
     color: #6f92ff;
 }
+.tz-select {
+    background: #0f1116;
+    border: 1px solid #333748;
+    color: #e8e8e8;
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: 12px;
+    margin-left: 6px;
+}
 
 /* ============================================================
    Footer

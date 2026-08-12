@@ -14,5 +14,11 @@
         <a class="nav-link {% if request.endpoint == 'home' %}active{% endif %}" href="{{ url_for('home') }}">Accueil</a>
         <a class="nav-link {% if request.endpoint == 'quick_check' %}active{% endif %}" href="{{ url_for('quick_check') }}">Quick Check</a>
         <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}">Dashboard</a>
+        <select id="tz-select" class="tz-select" title="Fuseau horaire d'affichage"
+                onchange="document.cookie='tz_choice='+this.value+';path=/;max-age=31536000'; window.location.reload();">
+            <option value="auto" {% if current_tz_choice == 'auto' %}selected{% endif %}>Auto (Europe/Paris)</option>
+            <option value="utc1" {% if current_tz_choice == 'utc1' %}selected{% endif %}>UTC+1</option>
+            <option value="utc2" {% if current_tz_choice == 'utc2' %}selected{% endif %}>UTC+2</option>
+        </select>
     </nav>
 </header>
