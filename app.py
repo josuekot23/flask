@@ -131,7 +131,7 @@ def build_traces(df, measurement_label, display_tz):
                 "y": sub["value"].tolist(),
                 "mode": "lines",
                 "name": label,
-                "line": {"color": color_map[freq], "width": 1.2},
+                "line": {"color": color_map[freq], "width": 1.2, "shape": "spline", "smoothing": 0.7},
                 "hovertemplate": (
                     f"<b>{label}</b><br>%{{x}}<br>{measurement_label}: %{{y}}<br>"
                     f"Chaînes: {derniere_chaine}<extra></extra>"
@@ -167,7 +167,7 @@ def build_temperature_traces(df, display_tz):
                 "y": sub["value"].round(2).tolist(),
                 "mode": "lines",
                 "name": s,
-                "line": {"color": color_map[s], "width": 1.5},
+                "line": {"color": color_map[s], "width": 1.5, "shape": "spline", "smoothing": 0.7},
                 "hovertemplate": f"<b>{s}</b><br>%{{x}}<br>Température: %{{y:.1f}} °C<extra></extra>",
             }
         )
