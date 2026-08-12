@@ -70,11 +70,17 @@ def _generate_distinct_colors(n):
     return colors
 
 
+def _freq_sort_key(freq):
+    """Tri numérique croissant sur la fréquence (en Hz); les valeurs non
+    numériques (ex: "inconnue") sont reléguées à la fin, triées entre elles."""
+    return (0, int(freq)) if freq.isdigit() else (1, freq)
+
+
 def build_traces(df, measurement_label, display_tz):
     """Construit les traces Plotly (format JSON) + les infos de la liste de fréquences."""
     df = df.sort_values("time")
 
-    frequencies = sorted(df["frequence_hz"].unique(), key=lambda x: (len(x), x))
+    frequencies = sorted(df["frequence_hz"].unique(), key=_freq_sort_key)
     palette = _generate_distinct_colors(len(frequencies))
     color_map = {f: palette[i] for i, f in enumerate(frequencies)}
 
