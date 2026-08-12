@@ -70,6 +70,36 @@ def _generate_distinct_colors(n):
     return colors
 
 
+MAX_TRACE_POINTS = 2000
+
+
+def _decimate_minmax(sub, max_points=MAX_TRACE_POINTS):
+    """
+    Réduit le nombre de points affichés au-delà de max_points, en gardant le
+    min ET le max de chaque intervalle (pas une simple décimation qui
+    prendrait 1 point sur N) — pour ne jamais masquer un vrai pic ou une
+    vraie chute de signal, tout en gardant le tracé lisible visuellement.
+    sub doit déjà être trié par temps.
+    """
+    n = len(sub)
+    if n <= max_points:
+        return sub
+
+    bucket_count = max(1, max_points // 2)
+    bucket_size = n / bucket_count
+    keep_idx = set()
+    for i in range(bucket_count):
+        start = int(i * bucket_size)
+        end = min(int((i + 1) * bucket_size), n)
+        if start >= end:
+            continue
+        bucket = sub.iloc[start:end]
+        keep_idx.add(bucket["value"].idxmin())
+        keep_idx.add(bucket["value"].idxmax())
+
+    return sub.loc[sorted(keep_idx)]
+
+
 def _freq_sort_key(freq):
     """Tri numérique croissant sur la fréquence (en Hz); les valeurs non
     numériques (ex: "inconnue") sont reléguées à la fin, triées entre elles."""
@@ -89,12 +119,14 @@ def build_traces(df, measurement_label, display_tz):
 
     for freq in frequencies:
         sub = df[df["frequence_hz"] == freq]
+        sub = _decimate_minmax(sub)
         derniere_chaine = sub["chaines"].iloc[-1] if not sub["chaines"].isna().all() else ""
         freq_mhz = int(freq) / 1_000_000 if freq.isdigit() else freq
         label = f"{freq_mhz:.0f} MHz" if isinstance(freq_mhz, float) else freq
 
         traces.append(
             {
+                "type": "scattergl",
                 "x": sub["time"].dt.tz_convert(display_tz).dt.strftime("%Y-%m-%dT%H:%M:%S").tolist(),
                 "y": sub["value"].tolist(),
                 "mode": "lines",
@@ -130,6 +162,7 @@ def build_temperature_traces(df, display_tz):
         sub = df[df["site"] == s]
         traces.append(
             {
+                "type": "scattergl",
                 "x": sub["time"].dt.tz_convert(display_tz).dt.strftime("%Y-%m-%dT%H:%M:%S").tolist(),
                 "y": sub["value"].round(2).tolist(),
                 "mode": "lines",
