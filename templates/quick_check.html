@@ -34,7 +34,13 @@
     {% for site in sites %}
     <div class="quick-card">
         <div class="quick-card-header">
-            <span class="quick-card-title">{{ site }}</span>
+            <span class="quick-card-title-group">
+                <span class="quick-card-title">{{ site }}</span>
+                {% set cat = site_categories.get(site, 'offline_long') %}
+                <span class="status-pill {% if cat == 'online' %}status-online{% elif cat == 'offline_recent' %}status-offline-recent{% else %}status-offline{% endif %}">
+                    {% if cat == 'online' %}● Actif{% elif cat == 'offline_recent' %}● Inactif{% else %}● Inactif (&gt; 5 j){% endif %}
+                </span>
+            </span>
             <span class="quick-card-meta">
                 {% if quick_data[site].freq_count > 0 %}
                     {{ quick_data[site].freq_count }} fréquence(s)

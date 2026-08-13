@@ -583,6 +583,11 @@ ul.freq-list {
     font-weight: 700;
     text-transform: capitalize;
 }
+.quick-card-title-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
 .quick-card-meta {
     font-size: 11px;
     color: #6b7185;

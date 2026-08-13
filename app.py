@@ -359,6 +359,9 @@ def quick_check():
     interval = rf.pick_group_interval(timedelta(hours=24))
 
     sites = rf.list_databases()
+    statuses = rf.get_all_sites_status(inactive_threshold_minutes=5)
+    site_categories = {s["site"]: s["category"] for s in statuses}
+
     error = None
     quick_data = {site: {"traces": [], "freq_count": 0} for site in sites}
 
@@ -384,6 +387,7 @@ def quick_check():
         "quick_check.html",
         sites=sites,
         quick_data=quick_data,
+        site_categories=site_categories,
         error=error,
         generated_at=generated_at,
     )
