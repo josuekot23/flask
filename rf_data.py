@@ -294,6 +294,68 @@ def get_site_status(database: str, inactive_threshold_minutes: float = 5) -> dic
     return status
 
 
+def get_disconnection_events(database: str, start_iso: str, end_iso: str, gap_threshold_minutes: int = 5) -> list:
+    """
+    Reconstruit l'historique des déconnexions d'un site à partir des
+    timestamps reçus sur la mesure "signal" (utilisée comme "battement de
+    coeur" de la sonde, cohérent avec le seuil déjà utilisé pour le statut
+    en ligne/hors ligne). Un intervalle sans aucune donnée pendant au moins
+    gap_threshold_minutes minutes est considéré comme une déconnexion.
+
+    Renvoie une liste d'événements (du plus récent au plus ancien):
+    [{"start": iso str UTC, "end": iso str UTC ou None si en cours,
+      "duration_minutes": float, "ongoing": bool}, ...]
+
+    Limite connue: si une déconnexion a commencé avant "start_iso", sa durée
+    affichée est tronquée à la fenêtre demandée (sous-estimée dans ce cas).
+    """
+    client = get_client(database=database)
+    start_iso = _ensure_rfc3339(start_iso)
+    end_iso = _ensure_rfc3339(end_iso)
+
+    query = f"""
+        SELECT count("signal") AS n
+        FROM "signal"
+        WHERE time >= '{start_iso}' AND time <= '{end_iso}'
+        GROUP BY time(1m) fill(0)
+    """
+    try:
+        result = client.query(query)
+    except Exception:
+        return []
+
+    rows = list(result.get_points())
+    if not rows:
+        return []
+
+    df = pd.DataFrame(rows)
+    df["time"] = pd.to_datetime(df["time"])
+    df["online"] = df["n"] > 0
+    df["group"] = (df["online"] != df["online"].shift()).cumsum()
+
+    last_bucket_time = df["time"].iloc[-1]
+    events = []
+
+    for _, g in df[~df["online"]].groupby("group"):
+        duration_minutes = len(g)  # 1 bucket = 1 minute
+        if duration_minutes < gap_threshold_minutes:
+            continue
+        start_time = g["time"].iloc[0]
+        end_bucket_time = g["time"].iloc[-1]
+        ongoing = end_bucket_time == last_bucket_time
+        events.append(
+            {
+                "start": start_time.isoformat(),
+                "end": None if ongoing else (end_bucket_time + pd.Timedelta(minutes=1)).isoformat(),
+                "duration_minutes": duration_minutes,
+                "ongoing": ongoing,
+            }
+        )
+
+    events.sort(key=lambda e: e["start"], reverse=True)
+    return events
+
+
 def get_all_sites_status(inactive_threshold_minutes: float = 5) -> list:
     return [get_site_status(db, inactive_threshold_minutes) for db in list_databases()]
 
@@ -386,7 +448,7 @@ def _fetch_from_database(database: str, start_iso: str, end_iso: str, group_inte
         return df
 
     df["time"] = pd.to_datetime(df["time"])
-    df["frequence_hz"] = df["raw_frequence"]#.apply(extract_frequency_prefix)
+    df["frequence_hz"] = df["raw_frequence"].apply(extract_frequency_prefix)
     df["chaines"] = df["raw_frequence"].apply(extract_channels)
     return df
 

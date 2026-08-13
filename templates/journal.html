@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Journal des déconnexions — SondeX</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+{% include "_header.html" %}
+
+<div class="page-content">
+
+<div class="home-header">
+    <p class="eyebrow">Réseau DVB-T · Surveillance</p>
+    <h2>Journal des déconnexions</h2>
+    <p class="home-intro">
+        Historique reconstruit à partir des trous de réception de "signal"
+        (5 minutes sans donnée = une déconnexion). Reconstruit à la demande,
+        pas de rafraîchissement automatique sur cette page.
+    </p>
+    <p class="home-meta">Généré le {{ generated_at }}</p>
+</div>
+
+<div class="journal-period-switch">
+    {% for key, span in periods.items() %}
+    <a class="period-btn {% if key == period_key %}active{% endif %}" href="{{ url_for('journal', period=key) }}">
+        {{ period_labels[key] }}
+    </a>
+    {% endfor %}
+</div>
+
+{% if site_journals|length == 0 %}
+<div class="empty-state">Aucune base de données InfluxDB trouvée.</div>
+{% endif %}
+
+{% for sj in site_journals %}
+<div class="journal-card">
+    <div class="journal-card-header">
+        <span class="journal-site-name">{{ sj.site }}</span>
+        <span class="journal-summary">
+            {% if sj.total_events > 0 %}
+                {{ sj.total_events }} déconnexion(s){% if sj.has_more %} (50 affichées){% endif %}
+                · {{ sj.total_downtime_fmt }} hors ligne au total
+            {% else %}
+                Aucune déconnexion sur la période
+            {% endif %}
+        </span>
+    </div>
+
+    {% if sj.error %}
+    <div class="site-error">{{ sj.error }}</div>
+    {% elif sj.total_events > 0 %}
+    <ul class="journal-events">
+        {% for e in sj.events %}
+        <li class="journal-event {% if e.ongoing %}journal-event-ongoing{% endif %}">
+            <span class="journal-event-range">
+                <span class="stat-mono">{{ e.start_fmt }}</span>
+                →
+                {% if e.ongoing %}
+                    <span class="journal-badge-ongoing">en cours</span>
+                {% else %}
+                    <span class="stat-mono">{{ e.end_fmt }}</span>
+                {% endif %}
+            </span>
+            <span class="journal-event-duration">{{ e.duration_fmt }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+{% endfor %}
+
+</div>
+
+{% include "_footer.html" %}
+
+</body>
+</html>

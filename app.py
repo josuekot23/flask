@@ -131,7 +131,7 @@ def build_traces(df, measurement_label, display_tz):
                 "y": sub["value"].tolist(),
                 "mode": "lines",
                 "name": label,
-                "line": {"color": color_map[freq], "width": 1.2, "shape": "spline", "smoothing": 0.9},
+                "line": {"color": color_map[freq], "width": 1.2, "shape": "spline", "smoothing": 0.7},
                 "hovertemplate": (
                     f"<b>{label}</b><br>%{{x}}<br>{measurement_label}: %{{y}}<br>"
                     f"Chaînes: {derniere_chaine}<extra></extra>"
@@ -249,6 +249,88 @@ def home():
         map_sites=map_sites,
         all_measurements=rf.ALL_MEASUREMENTS,
         measurement_labels=rf.MEASUREMENT_LABELS,
+        generated_at=generated_at,
+    )
+
+
+JOURNAL_PERIODS = {
+    "24h": timedelta(hours=24),
+    "7d": timedelta(days=7),
+    "30d": timedelta(days=30),
+}
+JOURNAL_PERIOD_LABELS = {"24h": "24 heures", "7d": "7 jours", "30d": "30 jours"}
+
+
+def _format_journal_dt(iso_str, display_tz):
+    if not iso_str:
+        return None
+    try:
+        dt_utc = datetime.fromisoformat(iso_str)
+        return dt_utc.astimezone(display_tz).strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        return iso_str
+
+
+def format_duration_minutes(minutes):
+    minutes = int(round(minutes))
+    if minutes < 60:
+        return f"{minutes} min"
+    hours, rem_min = divmod(minutes, 60)
+    if hours < 24:
+        return f"{hours} h {rem_min:02d} min" if rem_min else f"{hours} h"
+    days, rem_hours = divmod(hours, 24)
+    return f"{days} j {rem_hours} h" if rem_hours else f"{days} j"
+
+
+@app.route("/journal")
+def journal():
+    display_tz = get_display_tz()
+    period_key = request.args.get("period", "7d")
+    if period_key not in JOURNAL_PERIODS:
+        period_key = "7d"
+    span = JOURNAL_PERIODS[period_key]
+
+    end_dt = datetime.utcnow()
+    start_dt = end_dt - span
+    start_rfc3339 = start_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    end_rfc3339 = end_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    sites = rf.list_databases()
+    site_journals = []
+
+    for site in sites:
+        try:
+            events = rf.get_disconnection_events(site, start_rfc3339, end_rfc3339, gap_threshold_minutes=5)
+            error = None
+        except Exception as e:
+            events, error = [], f"Erreur InfluxDB: {e}"
+
+        for e in events:
+            e["start_fmt"] = _format_journal_dt(e["start"], display_tz)
+            e["end_fmt"] = _format_journal_dt(e["end"], display_tz)
+            e["duration_fmt"] = format_duration_minutes(e["duration_minutes"])
+
+        total_downtime_minutes = sum(e["duration_minutes"] for e in events)
+
+        site_journals.append(
+            {
+                "site": site,
+                "events": events[:50],
+                "total_events": len(events),
+                "has_more": len(events) > 50,
+                "total_downtime_fmt": format_duration_minutes(total_downtime_minutes) if events else "0 min",
+                "error": error,
+            }
+        )
+
+    generated_at = datetime.now(display_tz).strftime("%Y-%m-%d %H:%M:%S %Z")
+
+    return render_template(
+        "journal.html",
+        site_journals=site_journals,
+        period_key=period_key,
+        periods=JOURNAL_PERIODS,
+        period_labels=JOURNAL_PERIOD_LABELS,
         generated_at=generated_at,
     )
 
