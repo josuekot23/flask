@@ -5,6 +5,7 @@ une interrogation dynamique depuis l'API Flask, au lieu d'un export statique.
 """
 
 import csv
+import json
 import os
 import re
 from datetime import timedelta
@@ -354,6 +355,45 @@ def get_disconnection_events(database: str, start_iso: str, end_iso: str, gap_th
 
     events.sort(key=lambda e: e["start"], reverse=True)
     return events
+
+
+# Fichier JSON des liens d'accès terminal (ex: PiConnect) par site
+TERMINAL_LINKS_FILE = os.environ.get(
+    "TERMINAL_LINKS_FILE",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "terminal_links.json"),
+)
+
+
+def load_terminal_links() -> dict:
+    """
+    Charge {site: url} depuis TERMINAL_LINKS_FILE. Fichier absent ou
+    illisible -> dict vide, sans erreur bloquante.
+    """
+    if not os.path.exists(TERMINAL_LINKS_FILE):
+        return {}
+    try:
+        with open(TERMINAL_LINKS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def save_terminal_link(site: str, url: str) -> None:
+    """
+    Enregistre (ou retire, si url est vide) le lien terminal d'un site.
+    Note: lecture-modification-écriture simple, pas de verrou fichier —
+    suffisant pour un usage à quelques utilisateurs, mais deux sauvegardes
+    strictement simultanées pourraient en écraser une (cas très improbable
+    ici, non traité).
+    """
+    links = load_terminal_links()
+    if url:
+        links[site] = url
+    else:
+        links.pop(site, None)
+    with open(TERMINAL_LINKS_FILE, "w", encoding="utf-8") as f:
+        json.dump(links, f, ensure_ascii=False, indent=2)
 
 
 def get_all_sites_status(inactive_threshold_minutes: float = 5) -> list:

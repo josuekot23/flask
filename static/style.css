@@ -555,6 +555,64 @@ ul.freq-list {
 }
 
 /* ============================================================
+   Lien d'accès terminal, éditable par site
+   ============================================================ */
+.terminal-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+.terminal-btn {
+    background: #23262f;
+    margin-top: 0;
+}
+.terminal-empty {
+    font-size: 12px;
+    color: #6b7185;
+}
+.icon-btn {
+    background: #1b1e26;
+    border: 1px solid #2a2e3a;
+    color: #9aa1b1;
+    border-radius: 6px;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.icon-btn:hover {
+    color: #e8e8e8;
+    border-color: #3d6bff;
+}
+.terminal-edit-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    width: 100%;
+    background: #1b1e26;
+    border: 1px solid #2a2e3a;
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+.terminal-edit-form input[type="url"] {
+    background: #0f1116;
+    border: 1px solid #333748;
+    color: #e8e8e8;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 13px;
+    min-width: 280px;
+    flex: 1;
+}
+
+/* ============================================================
    Quick Check : petit graphique par sonde, en grille
    ============================================================ */
 .quick-error {

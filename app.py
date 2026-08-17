@@ -393,6 +393,30 @@ def quick_check():
     )
 
 
+@app.route("/api/terminal-link")
+def get_terminal_link():
+    site = request.args.get("site")
+    if not site or site not in rf.list_databases():
+        return jsonify({"error": "Site inconnu"}), 400
+    links = rf.load_terminal_links()
+    return jsonify({"url": links.get(site)})
+
+
+@app.route("/api/terminal-link", methods=["POST"])
+def set_terminal_link():
+    data = request.get_json(silent=True) or {}
+    site = data.get("site")
+    url = (data.get("url") or "").strip()
+
+    if not site or site not in rf.list_databases():
+        return jsonify({"error": "Site inconnu"}), 400
+    if url and not (url.startswith("http://") or url.startswith("https://")):
+        return jsonify({"error": "L'URL doit commencer par http:// ou https://"}), 400
+
+    rf.save_terminal_link(site, url)
+    return jsonify({"ok": True, "url": url or None})
+
+
 @app.route("/api/signal")
 def api_signal():
     display_tz = get_display_tz()

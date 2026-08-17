@@ -199,9 +199,84 @@ function renderTemperaturePlot(traces) {
     Plotly.react("temp-plot", traces, layout, { displaylogo: false });
 }
 
+// ============================================================
+// Lien d'accès terminal (PiConnect ou autre), éditable par site
+// ============================================================
+function updateTerminalUI(url) {
+    const btn = document.getElementById("terminal-link-btn");
+    const empty = document.getElementById("terminal-empty");
+    const input = document.getElementById("terminal-url-input");
+
+    if (url) {
+        btn.href = url;
+        btn.style.display = "inline-block";
+        empty.style.display = "none";
+    } else {
+        btn.style.display = "none";
+        empty.style.display = "inline";
+    }
+    input.value = url || "";
+}
+
+async function loadTerminalLink() {
+    const site = document.getElementById("site-select").value;
+    if (!site) return;
+    try {
+        const resp = await fetch(`/api/terminal-link?site=${encodeURIComponent(site)}`);
+        const data = await resp.json();
+        updateTerminalUI(data.url || null);
+    } catch (e) {
+        updateTerminalUI(null);
+    }
+}
+
+function setTerminalStatus(msg, isError = false) {
+    const el = document.getElementById("terminal-status");
+    el.textContent = msg;
+    el.style.color = isError ? "#ff6b6b" : "#9aa1b1";
+}
+
 document.getElementById("apply-btn").addEventListener("click", loadData);
 document.getElementById("measurement-select").addEventListener("change", loadData);
 document.getElementById("site-select").addEventListener("change", loadData);
+document.getElementById("site-select").addEventListener("change", loadTerminalLink);
+
+document.getElementById("terminal-edit-btn").addEventListener("click", () => {
+    const form = document.getElementById("terminal-edit-form");
+    form.style.display = form.style.display === "none" ? "flex" : "none";
+    setTerminalStatus("");
+});
+
+document.getElementById("terminal-cancel-btn").addEventListener("click", () => {
+    document.getElementById("terminal-edit-form").style.display = "none";
+});
+
+document.getElementById("terminal-save-btn").addEventListener("click", async () => {
+    const site = document.getElementById("site-select").value;
+    const url = document.getElementById("terminal-url-input").value.trim();
+
+    setTerminalStatus("Enregistrement…");
+
+    try {
+        const resp = await fetch("/api/terminal-link", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ site, url }),
+        });
+        const data = await resp.json();
+
+        if (data.error) {
+            setTerminalStatus(data.error, true);
+            return;
+        }
+
+        updateTerminalUI(data.url);
+        setTerminalStatus("Enregistré.");
+        document.getElementById("terminal-edit-form").style.display = "none";
+    } catch (e) {
+        setTerminalStatus("Erreur réseau: " + e, true);
+    }
+});
 document.getElementById("reset-btn").addEventListener("click", () => {
     setDefaultRange("start-date", "end-date");
     loadData();
@@ -220,4 +295,5 @@ window.addEventListener("DOMContentLoaded", () => {
     applyPreselectedSite();
     loadData();
     loadTemperatureData();
+    loadTerminalLink();
 });
