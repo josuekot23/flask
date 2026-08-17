@@ -11,13 +11,54 @@ Lancement:
 """
 
 from datetime import datetime, timedelta, timezone
+from functools import wraps
 from zoneinfo import ZoneInfo
 import colorsys
+import os
 
-from flask import Flask, jsonify, render_template, request, url_for
+from flask import Flask, abort, jsonify, redirect, render_template, request, session, url_for
+from flask_login import LoginManager, UserMixin, current_user, login_required, login_user, logout_user
+from werkzeug.security import check_password_hash
 import plotly.express as px
 
 import rf_data as rf
+
+app = Flask(__name__)
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me-in-production")
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
+
+login_manager = LoginManager(app)
+login_manager.login_view = "login"
+login_manager.login_message = "Merci de te connecter pour accéder à SondeX."
+
+
+class User(UserMixin):
+    def __init__(self, username, role):
+        self.id = username
+        self.role = role
+
+    @property
+    def is_admin(self):
+        return self.role == "admin"
+
+
+@login_manager.user_loader
+def load_user(username):
+    users = rf.load_users()
+    info = users.get(username)
+    if not info:
+        return None
+    return User(username, info.get("role", "user"))
+
+
+def admin_required(view):
+    @wraps(view)
+    @login_required
+    def wrapped(*args, **kwargs):
+        if not current_user.is_admin:
+            abort(403)
+        return view(*args, **kwargs)
+    return wrapped
 
 # Choix de fuseau pour l'affichage, sélectionnable depuis l'interface (menu
 # dans le header) et mémorisé dans un cookie. "auto" utilise la vraie base de
@@ -45,8 +86,6 @@ def get_display_tz():
     if choice == "utc2":
         return timezone(timedelta(hours=2), name="UTC+2")
     return ZoneInfo("Europe/Paris")
-
-app = Flask(__name__)
 
 
 @app.context_processor
@@ -188,7 +227,36 @@ def format_time_ago(minutes):
     return f"il y a {int(round(days))} j"
 
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for("home"))
+
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        users = rf.load_users()
+        info = users.get(username)
+        if info and check_password_hash(info["password_hash"], password):
+            session.permanent = True
+            login_user(User(username, info.get("role", "user")))
+            next_url = request.args.get("next")
+            return redirect(next_url or url_for("home"))
+        error = "Identifiant ou mot de passe incorrect."
+
+    return render_template("login.html", error=error)
+
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for("login"))
+
+
 @app.route("/")
+@login_required
 def home():
     display_tz = get_display_tz()
     statuses = rf.get_all_sites_status(inactive_threshold_minutes=5)
@@ -283,6 +351,7 @@ def format_duration_minutes(minutes):
 
 
 @app.route("/journal")
+@login_required
 def journal():
     display_tz = get_display_tz()
     period_key = request.args.get("period", "7d")
@@ -336,6 +405,7 @@ def journal():
 
 
 @app.route("/dashboard")
+@login_required
 def dashboard():
     sites = rf.list_databases()
     preselected_site = request.args.get("site", "")
@@ -350,6 +420,7 @@ def dashboard():
 
 
 @app.route("/quick-check")
+@login_required
 def quick_check():
     display_tz = get_display_tz()
     end_dt = datetime.utcnow()
@@ -394,6 +465,7 @@ def quick_check():
 
 
 @app.route("/api/terminal-link")
+@admin_required
 def get_terminal_link():
     site = request.args.get("site")
     if not site or site not in rf.list_databases():
@@ -403,6 +475,7 @@ def get_terminal_link():
 
 
 @app.route("/api/terminal-link", methods=["POST"])
+@admin_required
 def set_terminal_link():
     data = request.get_json(silent=True) or {}
     site = data.get("site")
@@ -418,6 +491,7 @@ def set_terminal_link():
 
 
 @app.route("/api/signal")
+@login_required
 def api_signal():
     display_tz = get_display_tz()
     start = request.args.get("start")
@@ -475,6 +549,7 @@ def api_signal():
 
 
 @app.route("/api/temperature")
+@login_required
 def api_temperature():
     display_tz = get_display_tz()
     start = request.args.get("start")

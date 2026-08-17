@@ -21,5 +21,11 @@
             <option value="utc1" {% if current_tz_choice == 'utc1' %}selected{% endif %}>UTC+1</option>
             <option value="utc2" {% if current_tz_choice == 'utc2' %}selected{% endif %}>UTC+2</option>
         </select>
+        {% if current_user.is_authenticated %}
+        <span class="user-info">
+            {{ current_user.id }}{% if current_user.is_admin %} <span class="admin-badge">admin</span>{% endif %}
+        </span>
+        <a class="nav-link" href="{{ url_for('logout') }}">Déconnexion</a>
+        {% endif %}
     </nav>
 </header>

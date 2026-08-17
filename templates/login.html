@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Connexion — SondeX</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="login-page">
+    <div class="login-card">
+        <div class="brand login-brand">
+            <span class="brand-mark">
+                <span class="brand-bar"></span>
+                <span class="brand-bar"></span>
+                <span class="brand-bar"></span>
+            </span>
+            <span class="brand-text">
+                <span class="brand-name">SondeX</span>
+                <span class="brand-tagline">Surveillance RF DVB-T</span>
+            </span>
+        </div>
+
+        {% if error %}
+        <div class="site-error login-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" class="login-form">
+            <label>Identifiant
+                <input type="text" name="username" autocomplete="username" required autofocus>
+            </label>
+            <label>Mot de passe
+                <input type="password" name="password" autocomplete="current-password" required>
+            </label>
+            <button type="submit">Se connecter</button>
+        </form>
+    </div>
+</div>
+
+</body>
+</html>

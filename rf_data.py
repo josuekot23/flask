@@ -396,6 +396,29 @@ def save_terminal_link(site: str, url: str) -> None:
         json.dump(links, f, ensure_ascii=False, indent=2)
 
 
+# Fichier JSON des comptes utilisateurs {username: {"password_hash":..., "role": "user"|"admin"}}
+USERS_FILE = os.environ.get(
+    "USERS_FILE", os.path.join(os.path.dirname(os.path.abspath(__file__)), "users.json")
+)
+
+
+def load_users() -> dict:
+    """Charge les comptes utilisateurs. Fichier absent/illisible -> dict vide."""
+    if not os.path.exists(USERS_FILE):
+        return {}
+    try:
+        with open(USERS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def save_users(users: dict) -> None:
+    with open(USERS_FILE, "w", encoding="utf-8") as f:
+        json.dump(users, f, ensure_ascii=False, indent=2)
+
+
 def get_all_sites_status(inactive_threshold_minutes: float = 5) -> list:
     return [get_site_status(db, inactive_threshold_minutes) for db in list_databases()]
 

@@ -206,6 +206,7 @@ function updateTerminalUI(url) {
     const btn = document.getElementById("terminal-link-btn");
     const empty = document.getElementById("terminal-empty");
     const input = document.getElementById("terminal-url-input");
+    if (!btn || !empty || !input) return; // bloc absent pour un utilisateur non-admin
 
     if (url) {
         btn.href = url;
@@ -219,6 +220,7 @@ function updateTerminalUI(url) {
 }
 
 async function loadTerminalLink() {
+    if (!document.getElementById("terminal-link-btn")) return; // pas admin, rien à charger
     const site = document.getElementById("site-select").value;
     if (!site) return;
     try {
@@ -232,6 +234,7 @@ async function loadTerminalLink() {
 
 function setTerminalStatus(msg, isError = false) {
     const el = document.getElementById("terminal-status");
+    if (!el) return;
     el.textContent = msg;
     el.style.color = isError ? "#ff6b6b" : "#9aa1b1";
 }
@@ -241,42 +244,52 @@ document.getElementById("measurement-select").addEventListener("change", loadDat
 document.getElementById("site-select").addEventListener("change", loadData);
 document.getElementById("site-select").addEventListener("change", loadTerminalLink);
 
-document.getElementById("terminal-edit-btn").addEventListener("click", () => {
-    const form = document.getElementById("terminal-edit-form");
-    form.style.display = form.style.display === "none" ? "flex" : "none";
-    setTerminalStatus("");
-});
+const terminalEditBtn = document.getElementById("terminal-edit-btn");
+if (terminalEditBtn) {
+    terminalEditBtn.addEventListener("click", () => {
+        const form = document.getElementById("terminal-edit-form");
+        form.style.display = form.style.display === "none" ? "flex" : "none";
+        setTerminalStatus("");
+    });
+}
 
-document.getElementById("terminal-cancel-btn").addEventListener("click", () => {
-    document.getElementById("terminal-edit-form").style.display = "none";
-});
-
-document.getElementById("terminal-save-btn").addEventListener("click", async () => {
-    const site = document.getElementById("site-select").value;
-    const url = document.getElementById("terminal-url-input").value.trim();
-
-    setTerminalStatus("Enregistrement…");
-
-    try {
-        const resp = await fetch("/api/terminal-link", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ site, url }),
-        });
-        const data = await resp.json();
-
-        if (data.error) {
-            setTerminalStatus(data.error, true);
-            return;
-        }
-
-        updateTerminalUI(data.url);
-        setTerminalStatus("Enregistré.");
+const terminalCancelBtn = document.getElementById("terminal-cancel-btn");
+if (terminalCancelBtn) {
+    terminalCancelBtn.addEventListener("click", () => {
         document.getElementById("terminal-edit-form").style.display = "none";
-    } catch (e) {
-        setTerminalStatus("Erreur réseau: " + e, true);
-    }
-});
+    });
+}
+
+const terminalSaveBtn = document.getElementById("terminal-save-btn");
+if (terminalSaveBtn) {
+    terminalSaveBtn.addEventListener("click", async () => {
+        const site = document.getElementById("site-select").value;
+        const url = document.getElementById("terminal-url-input").value.trim();
+
+        setTerminalStatus("Enregistrement…");
+
+        try {
+            const resp = await fetch("/api/terminal-link", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ site, url }),
+            });
+            const data = await resp.json();
+
+            if (data.error) {
+                setTerminalStatus(data.error, true);
+                return;
+            }
+
+            updateTerminalUI(data.url);
+            setTerminalStatus("Enregistré.");
+            document.getElementById("terminal-edit-form").style.display = "none";
+        } catch (e) {
+            setTerminalStatus("Erreur réseau: " + e, true);
+        }
+    });
+}
+
 document.getElementById("reset-btn").addEventListener("click", () => {
     setDefaultRange("start-date", "end-date");
     loadData();

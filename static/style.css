@@ -613,6 +613,80 @@ ul.freq-list {
 }
 
 /* ============================================================
+   Connexion / rôle utilisateur
+   ============================================================ */
+.user-info {
+    font-size: 12px;
+    color: #9aa1b1;
+    margin-left: 10px;
+}
+.admin-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #6f92ff;
+    background: rgba(61, 107, 255, 0.15);
+    padding: 2px 6px;
+    border-radius: 999px;
+}
+.login-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.login-card {
+    background: #1b1e26;
+    border: 1px solid #2a2e3a;
+    border-radius: 10px;
+    padding: 32px 28px;
+    width: 100%;
+    max-width: 360px;
+}
+.login-brand {
+    justify-content: center;
+    margin-bottom: 24px;
+}
+.login-error {
+    margin-bottom: 16px;
+}
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.login-form label {
+    display: flex;
+    flex-direction: column;
+    font-size: 12px;
+    color: #9aa1b1;
+    gap: 6px;
+}
+.login-form input {
+    background: #0f1116;
+    border: 1px solid #333748;
+    color: #e8e8e8;
+    border-radius: 6px;
+    padding: 9px 10px;
+    font-size: 14px;
+}
+.login-form button {
+    background: #3d6bff;
+    border: none;
+    color: white;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 6px;
+}
+.login-form button:hover {
+    opacity: 0.9;
+}
+
+/* ============================================================
    Quick Check : petit graphique par sonde, en grille
    ============================================================ */
 .quick-error {

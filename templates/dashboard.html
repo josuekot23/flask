@@ -40,6 +40,7 @@
     <span id="status" class="status"></span>
 </div>
 
+{% if current_user.is_admin %}
 <div class="terminal-row">
     <a id="terminal-link-btn" class="consult-btn terminal-btn" href="#" target="_blank" rel="noopener" style="display:none;">🖥️ Accéder au terminal →</a>
     <span id="terminal-empty" class="terminal-empty">Aucun lien terminal configuré pour ce site</span>
@@ -51,6 +52,7 @@
         <span id="terminal-status" class="status"></span>
     </div>
 </div>
+{% endif %}
 
 <div id="rf-plot"></div>
 
